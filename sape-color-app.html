@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sape Color</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1A1A18;
+    --text-2: #6B6A65;
+    --text-3: #A09F9A;
+    --radius: 14px;
+    --radius-sm: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412;
+      --surface: #1E1E1B;
+      --border: rgba(255,255,255,0.1);
+      --border-strong: rgba(255,255,255,0.18);
+      --text: #F0EFE9;
+      --text-2: #9A9992;
+      --text-3: #5A5952;
+    }
+  }
+
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  header { margin-bottom: 1.5rem; }
+  header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 2px; }
+  header p { font-size: 13px; color: var(--text-2); line-height: 1.4; }
+
+  /* Tabs for input method */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 1rem;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 10px 4px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .tab-btn.active { background: var(--text); color: var(--bg); }
+  .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.75rem;
+  }
+
+  /* WHEEL PANEL */
+  .wheel-center { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .wheel-wrap { position: relative; touch-action: none; }
+  #colorWheel { display: block; border-radius: 50%; cursor: crosshair; touch-action: none; }
+  .wheel-cursor {
+    position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    border: 3px solid white; outline: 1.5px solid rgba(0,0,0,0.4);
+    pointer-events: none; transform: translate(-50%, -50%);
+  }
+
+  /* HEX PANEL */
+  .hex-input-row { display: flex; gap: 8px; align-items: center; }
+  .hex-prefix {
+    font-size: 16px; color: var(--text-3); font-family: monospace;
+    padding: 0 2px;
+  }
+  #hexInput {
+    flex: 1; font-size: 16px; font-family: monospace; padding: 12px 14px;
+    border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong);
+    background: var(--bg); color: var(--text); width: 100%;
+    text-transform: uppercase;
+  }
+  #hexInput:focus { outline: 2px solid var(--text); outline-offset: -1px; }
+  .hex-error { font-size: 12px; color: #C0392B; margin-top: 6px; min-height: 16px; }
+  .hex-swatches-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .hex-swatch-preset {
+    width: 32px; height: 32px; border-radius: 8px; border: 0.5px solid var(--border);
+    cursor: pointer; flex-shrink: 0;
+  }
+
+  /* PHOTO PANEL */
+  .photo-actions { display: flex; gap: 8px; }
+  .photo-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 1.5rem 0.5rem; border-radius: var(--radius-sm); border: 1.5px dashed var(--border-strong);
+    background: var(--bg); color: var(--text-2); font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  .photo-btn svg { width: 26px; height: 26px; }
+  .photo-preview-wrap { position: relative; margin-top: 1rem; border-radius: var(--radius-sm); overflow: hidden; }
+  #photoCanvas { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: none; }
+  .photo-tap-marker {
+    position: absolute; width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid white; outline: 1.5px solid rgba(0,0,0,0.4);
+    pointer-events: none; transform: translate(-50%, -50%); display: none;
+  }
+  .detected-row { display: flex; gap: 10px; margin-top: 1rem; }
+  .detected-swatch {
+    flex: 1; height: 56px; border-radius: var(--radius-sm); border: 2px solid transparent;
+    cursor: pointer; position: relative;
+  }
+  .detected-swatch.selected { border-color: var(--text); }
+  .detected-hint { font-size: 11px; color: var(--text-3); margin-top: 8px; text-align: center; }
+  video#cameraStream { display: block; width: 100%; border-radius: var(--radius-sm); margin-top: 1rem; }
+  .camera-controls { display: flex; gap: 8px; margin-top: 10px; }
+  .camera-btn {
+    flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong);
+    background: var(--bg); color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .camera-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* SELECTED COLOR SUMMARY (shared) */
+  .selected-summary {
+    display: flex; align-items: center; gap: 12px; padding: 12px; margin-top: 0;
+    background: var(--bg); border-radius: var(--radius-sm);
+  }
+  .selected-summary .swatch { width: 44px; height: 44px; border-radius: 10px; border: 0.5px solid var(--border); flex-shrink: 0; }
+  .selected-summary .meta { display: flex; flex-direction: column; gap: 1px; }
+  .selected-summary .name { font-size: 14px; font-weight: 600; }
+  .selected-summary .hex { font-size: 12px; color: var(--text-2); font-family: monospace; }
+
+  /* COUNT SELECTOR */
+  .count-row { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; }
+  .count-label { font-size: 13px; color: var(--text-2); }
+  .count-btns { display: flex; gap: 6px; }
+  .count-btn {
+    width: 38px; height: 38px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong);
+    background: transparent; color: var(--text-2); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .count-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* MODE SELECTOR */
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mode-btn {
+    padding: 10px 8px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-strong);
+    background: transparent; color: var(--text-2); font-size: 12.5px; font-weight: 500; cursor: pointer;
+    text-align: center;
+  }
+  .mode-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .mode-hint { font-size: 11.5px; color: var(--text-3); margin-top: 10px; line-height: 1.4; }
+
+  /* PALETTES */
+  .palettes-section { display: flex; flex-direction: column; gap: 0.75rem; }
+  .palette-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; }
+  .palette-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.75rem; gap: 8px; }
+  .palette-name { font-size: 13px; font-weight: 600; }
+  .palette-mood { font-size: 11px; color: var(--text-3); font-style: italic; text-align: right; }
+  .palette-swatches { display: flex; gap: 6px; margin-bottom: 0.75rem; }
+  .p-swatch { flex: 1; height: 44px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.07); position: relative; min-width: 0; }
+  .p-swatch-hex {
+    position: absolute; bottom: 3px; left: 0; right: 0; text-align: center;
+    font-size: 8px; font-family: monospace; color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5); pointer-events: none; user-select: none;
+    overflow: hidden;
+  }
+  .pieces-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .piece-tag {
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 16px;
+    border: 0.5px solid var(--border); font-size: 11.5px; color: var(--text-2); background: var(--bg);
+  }
+  .piece-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 0.5px solid rgba(0,0,0,0.12); }
+
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-3); font-size: 13px; }
+  hr.divider { border: none; border-top: 0.5px solid var(--border); margin: 1rem 0; }
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>Sape Color</h1>
+    <p>Choisis ta couleur — roue, code hex ou photo — et trouve ce qui matche.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="wheel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+      Roue
+    </button>
+    <button class="tab-btn" data-tab="hex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+      Hex
+    </button>
+    <button class="tab-btn" data-tab="photo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M9 6l1-2h4l1 2"/></svg>
+      Photo
+    </button>
+  </div>
+
+  <!-- WHEEL PANEL -->
+  <div class="panel active" id="panel-wheel">
+    <div class="card">
+      <div class="section-label">Roue chromatique</div>
+      <div class="wheel-center">
+        <div class="wheel-wrap">
+          <canvas id="colorWheel" width="240" height="240"></canvas>
+          <div class="wheel-cursor" id="wheelCursor" style="left:120px;top:120px;"></div>
+        </div>
+        <div class="selected-summary" style="width:100%;">
+          <div class="swatch" id="wheelSwatch" style="background:#C4956A;"></div>
+          <div class="meta">
+            <span class="name" id="wheelName">Caramel chaud</span>
+            <span class="hex" id="wheelHex">#C4956A</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEX PANEL -->
+  <div class="panel" id="panel-hex">
+    <div class="card">
+      <div class="section-label">Code hexadécimal</div>
+      <div class="hex-input-row">
+        <span class="hex-prefix">#</span>
+        <input type="text" id="hexInput" placeholder="C4956A" maxlength="7" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="hex-error" id="hexError"></div>
+      <div class="selected-summary" id="hexSummary" style="display:none;">
+        <div class="swatch" id="hexSwatch"></div>
+        <div class="meta">
+          <span class="name" id="hexName"></span>
+          <span class="hex" id="hexHexDisplay"></span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="section-label" style="margin-bottom:0.5rem;">Ou essaie</div>
+      <div class="hex-swatches-row" id="hexPresets"></div>
+    </div>
+  </div>
+
+  <!-- PHOTO PANEL -->
+  <div class="panel" id="panel-photo">
+    <div class="card">
+      <div class="section-label">Depuis une photo</div>
+      <div class="photo-actions" id="photoActions">
+        <button class="photo-btn" id="btnUpload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+          Galerie
+        </button>
+        <button class="photo-btn" id="btnCamera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M9 6l1-2h4l1 2"/></svg>
+          Caméra
+        </button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+
+      <video id="cameraStream" autoplay playsinline muted style="display:none;"></video>
+      <div class="camera-controls" id="cameraControls" style="display:none;">
+        <button class="camera-btn primary" id="btnCapture">Capturer</button>
+        <button class="camera-btn" id="btnCancelCamera">Annuler</button>
+      </div>
+
+      <div class="photo-preview-wrap" id="photoPreviewWrap" style="display:none;">
+        <canvas id="photoCanvas"></canvas>
+        <div class="photo-tap-marker" id="photoTapMarker"></div>
+      </div>
+      <div class="detected-hint" id="detectedHint" style="display:none;">Tape sur la photo ou choisis une couleur détectée</div>
+      <div class="detected-row" id="detectedRow" style="display:none;"></div>
+
+      <div class="selected-summary" id="photoSummary" style="display:none; margin-top:1rem;">
+        <div class="swatch" id="photoSwatch"></div>
+        <div class="meta">
+          <span class="name" id="photoName"></span>
+          <span class="hex" id="photoHexDisplay"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COUNT SELECTOR (shared) -->
+  <div class="card">
+    <div class="count-row">
+      <span class="count-label">Nombre de couleurs à porter</span>
+      <div class="count-btns" id="countBtns">
+        <button class="count-btn active" data-n="2">2</button>
+        <button class="count-btn" data-n="3">3</button>
+        <button class="count-btn" data-n="4">4</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE SELECTOR -->
+  <div class="card">
+    <div class="section-label">Méthode de matching</div>
+    <div class="mode-grid" id="modeGrid">
+      <button class="mode-btn active" data-mode="wada">Wada</button>
+      <button class="mode-btn" data-mode="analogous">Analogue</button>
+      <button class="mode-btn" data-mode="complementary">Complémentaire</button>
+      <button class="mode-btn" data-mode="split">Split-complémentaire</button>
+      <button class="mode-btn" data-mode="triadic">Triade</button>
+      <button class="mode-btn" data-mode="tetradic">Tétrade</button>
+    </div>
+    <p class="mode-hint" id="modeHint">Vraies combinaisons du dictionnaire de Sanzo Wada (348 palettes, 159 couleurs).</p>
+  </div>
+
+  <div class="section-label" style="padding: 0 4px 8px;">Combinaisons suggérées</div>
+  <div class="palettes-section" id="palettesSection">
+    <div class="empty-state">Choisis une couleur ci-dessus pour commencer</div>
+  </div>
+
+</div>
+
+<script>
+/* ===================== COLOR UTILS ===================== */
+function hslToRgb(h, s, l) {
+  let r,g,b;
+  if(s===0){r=g=b=l;}else{
+    const q=l<0.5?l*(1+s):l+s-l*s, p=2*l-q;
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
+  }
+  return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];
+}
+function hue2rgb(p,q,t){
+  if(t<0)t+=1;if(t>1)t-=1;
+  if(t<1/6)return p+(q-p)*6*t;
+  if(t<1/2)return q;
+  if(t<2/3)return p+(q-p)*(2/3-t)*6;
+  return p;
+}
+function rgbToHex(r,g,b){return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  return [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];
+}
+function rgbToHsl(r,g,b){
+  r/=255;g/=255;b/=255;
+  const max=Math.max(r,g,b),min=Math.min(r,g,b);
+  let h,s,l=(max+min)/2;
+  if(max===min){h=s=0;}else{
+    const d=max-min;
+    s=l>0.5?d/(2-max-min):d/(max+min);
+    switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}
+    h/=6;
+  }
+  return [h*360,s*100,l*100];
+}
+function hslToHex(h,s,l){
+  const [r,g,b]=hslToRgb(h/360,s/100,l/100);
+  return rgbToHex(r,g,b);
+}
+function isValidHex(hex){
+  return /^#?([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/.test(hex);
+}
+function getColorName(h,s,l){
+  if(s<12) return l<25?'Noir charbon':l<50?'Gris anthracite':l<75?'Gris clair':'Blanc cassé';
+  if(l<18) return 'Ton très sombre';
+  if(l>85) return 'Ton très pâle';
+  if(h<18||h>=345) return s>55?'Rouge sang':'Rouge doux';
+  if(h<38) return s>55?'Orange brûlé':l<50?'Terracotta':'Caramel chaud';
+  if(h<58) return l<55?'Ambre doré':'Ocre clair';
+  if(h<75) return l<55?'Olive':'Jaune doux';
+  if(h<105) return 'Vert olive';
+  if(h<150) return l<45?'Vert forêt':'Vert sauge';
+  if(h<175) return 'Vert mousse';
+  if(h<205) return s>50?'Bleu canard':'Bleu gris';
+  if(h<230) return 'Bleu ciel';
+  if(h<255) return 'Bleu marine';
+  if(h<275) return 'Indigo';
+  if(h<295) return l>60?'Lavande':'Violet profond';
+  if(h<320) return 'Mauve';
+  return 'Rose ancien';
+}
+
+/* ===================== WADA SANZO DATASET ===================== */
+/* 159 colors + 348 real combinations from "A Dictionary of Color Combinations"
+   by Sanzo Wada (Seigensha Art Publishing). Source: wscolors.com digitization. */
+const WADA_NAMES = [["Hermosa Pink","#f9c1ce"],["Corinthian Pink","#f8b6ba"],["Cameo Pink","#e0b3b6"],["Fawn","#d1b0a7"],["Light Brown Drab","#b59392"],["Coral Red","#f58e84"],["Fresh Color","#f6917e"],["Grenadine Pink","#f48067"],["Eosine Pink","#f37f94"],["Spinel Red","#f27291"],["Old Rose","#d46d7a"],["Eugenia Red A","#e2625e"],["Eugenia Red B","#da525d"],["Raw Sienna","#bb7125"],["Vinaceous Tawny","#c56127"],["Jasper Red","#eb5324"],["Spectrum Red","#e31f26"],["Red Orange","#dd4027"],["Etruscan Red","#c55347"],["Burnt Sienna","#ae5224"],["Ochre Red","#ab544d"],["Scarlet","#cb2f43"],["Carmine","#cc1236"],["Indian Lake","#c53c69"],["Rosolanc Purple","#b73f74"],["Pomegranite Purple","#b71f57"],["Hydrangea Red","#a94151"],["Brick Red","#a84222"],["Carmine Red","#a62c37"],["Pompeian Red","#ab2439"],["Red","#a72144"],["Brown","#7c4226"],["Hay's Russet","#793327"],["Vandyke Red","#82241f"],["Pansy Purple","#7d133a"],["Pale Burnt Lake","#802626"],["Violet Red","#642d5e"],["Vistoris Lake","#6d4145"],["Sulpher Yellow","#f5ecc2"],["Pale Lemon Yellow","#ffefae"],["Naples Yellow","#fbe6a0"],["Ivory Buff","#ebd3a2"],["Seashell Pink","#fdd4bd"],["Light Pinkish Cinnamon","#fcc79b"],["Pinkish Cinnamon","#eeb480"],["Cinnamon Buff","#fdc57e"],["Cream Yellow","#fdbf68"],["Golden Yellow","#f3a257"],["Vinaceous Cinnamon","#eea78c"],["Ochraceous Salmon","#d8a37b"],["Isabella Color","#c5a56e"],["Maple","#c59f6b"],["Olive Buff","#c1c494"],["Ecru","#c2ae93"],["Yellow","#fff200"],["Lemon Yellow","#f8ed43"],["Apricot Yellow","#ffdd00"],["Pyrite Yellow","#cab356"],["Olive Ocher","#d6b43e"],["Yellow Ocher","#e2b540"],["Orange Yellow","#fcb315"],["Yellow Orange","#f99d1b"],["Apricot Orange","#f68c50"],["Orange","#f37420"],["Peach Red","#f15a30"],["English Red","#d96629"],["Cinnamon Rufous","#c27544"],["Orange Rufous","#c16b27"],["Sulphine Yellow","#c19f2c"],["Khaki","#bc892b"],["Citron Yellow","#b2b73e"],["Citrine","#b09f36"],["Buffy Citrine","#96874d"],["Dark Citrine","#8b835b"],["Light Grayish Olive","#848061"],["Krongbergs Green","#84875e"],["Olive","#837e31"],["Orange Citrine","#986f2d"],["Sudan Brown","#a36752"],["Olive Green","#6b7140"],["Light Brownish Olive","#806e4b"],["Deep Grayish Olive","#635a3a"],["Pale Raw Umber","#71502f"],["Sepia","#644b1e"],["Madder Brown","#762c19"],["Mars Brown Tobacco","#653514"],["Vandyke Brown","#4b3317"],["Turquoise Green","#b5decc"],["Glaucous Green","#b4cdc2"],["Dark Greenish Glaucous","#b7c2a9"],["Yellow Green","#afd472"],["Light Green Yellow","#c7d14f"],["Night Green","#87c540"],["Olive Yellow","#a6a159"],["Artemesia Green","#709390"],["Andover Green","#6d7e77"],["Rainette Green","#8fa071"],["Chromium Green","#719470"],["Pistachio Green","#648f7b"],["Sea Green","#00b49b"],["Benzol Green","#00978d"],["Light Porcelain Green","#00908a"],["Green","#489b6e"],["Dull Viridian Green","#009465"],["Oil Green","#819238"],["Diamine Green","#1a7444"],["Cossack Green","#437742"],["Lincoln Green","#555832"],["Blackish Olive","#42533e"],["Deep Slate Olive","#253122"],["Nile Blue","#bce4e5"],["Pale King's Blue","#a7d4e4"],["Light Glaucous Blue","#a5c8d1"],["Salvia Blue","#97acc8"],["Cobalt Green","#96d1aa"],["Calamine Blue","#78cdd0"],["Venice Green","#62c6bf"],["Cerulian Blue","#0093a5"],["Peacock Blue","#00939b"],["Green Blue","#099197"],["Olympic Blue","#5a82b3"],["Blue","#006eb8"],["Antwarp Blue","#007190"],["Helvetia Blue","#005b8d"],["Dark Medici Blue","#547076"],["Dusky Green","#004f46"],["Deep Lyons Blue","#1c4286"],["Violet Blue","#40456a"],["Vandar Poel's Blue","#064f6e"],["Dark Tyrian Blue","#12354e"],["Dull Violet Black","#1e0e3f"],["Deep Indigo","#051230"],["Deep Slate Green","#112f2c"],["Grayish Lavender A","#b5b1d8"],["Grayish Lavender B","#c0a9b3"],["Laelia Pink","#ca92a8"],["Lilac","#b984af"],["Eupatorium Purple","#bf5892"],["Light Mauve","#9a72aa"],["Aconite Violet","#a36aa5"],["Dull Blue Violet","#80719e"],["Dark Soft Violet","#66629c"],["Blue Violet","#6450a1"],["Purple Drab","#84565b"],["Deep Violet Plumbeous","#70727c"],["Veronia Purple","#8c4c62"],["Dark Slate Purple","#704357"],["Taupe Brown","#7a4456"],["Violet Carmine","#713b4c"],["Violet","#4f4086"],["Red Violet","#59256a"],["Cotinga Purple","#501345"],["Dusky Madder Violet","#4e1d4c"],["White","#ffffff"],["Neutral Gray","#b6bfc1"],["Mineral Gray","#a2b0ad"],["Warm Gray","#a1a39a"],["Slate Color","#34454c"],["Black","#111314"]];
+const WADA_PALETTES = [["#f9c1ce","#fdd4bd","#78cdd0"],["#f9c1ce","#a5c8d1","#0093a5"],["#f9c1ce","#7d133a","#a36752","#b6bfc1"],["#f8b6ba","#34454c"],["#f8b6ba","#a36aa5"],["#f8b6ba","#b2b73e"],["#f8b6ba","#c55347"],["#f8b6ba","#62c6bf","#9a72aa"],["#f8b6ba","#ffefae","#a1a39a"],["#f8b6ba","#c0a9b3","#7a4456"],["#f8b6ba","#f3a257","#c27544"],["#f8b6ba","#a84222","#f5ecc2","#fdc57e"],["#f8b6ba","#f5ecc2","#837e31","#ca92a8"],["#f8b6ba","#dd4027","#b7c2a9","#0093a5"],["#f8b6ba","#fdbf68","#986f2d","#253122"],["#e0b3b6","#1c4286"],["#e0b3b6","#719470"],["#e0b3b6","#6450a1"],["#e0b3b6","#ab2439"],["#e0b3b6","#f27291","#6d4145"],["#e0b3b6","#793327","#5a82b3"],["#d1b0a7","#4e1d4c"],["#d1b0a7","#0093a5","#40456a"],["#d1b0a7","#cb2f43","#d96629","#96d1aa"],["#b59392","#a62c37"],["#b59392","#fff200"],["#b59392","#c55347","#ffefae"],["#b59392","#e2b540","#006eb8"],["#b59392","#d8a37b","#b5decc"],["#b59392","#cab356","#b4cdc2"],["#b59392","#c56127","#6d7e77","#007190"],["#b59392","#bb7125","#253122","#bce4e5"],["#b59392","#ae5224","#f15a30","#b5decc"],["#b59392","#f5ecc2","#253122","#97acc8"],["#f58e84","#00978d"],["#f58e84","#f8ed43","#7a4456"],["#f58e84","#f5ecc2","#819238","#a5c8d1"],["#f58e84","#cb2f43","#253122","#004f46"],["#f6917e","#fff200","#0093a5"],["#f48067","#051230"],["#f48067","#00b49b"],["#f48067","#111314"],["#f48067","#fbe6a0","#112f2c"],["#f48067","#fbe6a0","#00908a"],["#f48067","#837e31","#96d1aa"],["#f48067","#b5decc","#96d1aa"],["#f48067","#fdbf68","#b5decc","#78cdd0"],["#f48067","#f5ecc2","#f3a257","#bf5892"],["#f48067","#437742","#253122","#a5c8d1"],["#f37f94","#b6bfc1"],["#a62c37","#006eb8"],["#f5ecc2","#111314"],["#f99d1b","#4e1d4c"],["#00978d","#a5c8d1"],["#d46d7a","#ffffff"],["#c0a9b3","#4f4086"],["#7a4456","#34454c"],["#793327","#00b49b"],["#f37f94","#b09f36"],["#ffefae","#12354e"],["#c7d14f","#501345"],["#fff200","#111314"],["#6d4145","#0093a5"],["#a36aa5","#66629c"],["#c19f2c","#78cdd0"],["#d6b43e","#6b7140"],["#5a82b3","#12354e"],["#b59392","#fff200"],["#a1a39a","#111314"],["#bb7125","#555832"],["#ab2439","#d8a37b"],["#f5ecc2","#a7d4e4"],["#71502f","#8fa071"],["#b5decc","#099197"],["#a7d4e4","#40456a"],["#ffefae","#a1a39a"],["#da525d","#064f6e"],["#eeb480","#62c6bf"],["#762c19","#099197"],["#f5ecc2","#9a72aa"],["#f3a257","#a1a39a"],["#793327","#4e1d4c"],["#c1c494","#40456a"],["#fdd4bd","#112f2c"],["#c56127","#007190"],["#bb7125","#00b49b"],["#f8b6ba","#b2b73e"],["#fdd4bd","#006eb8"],["#f99d1b","#40456a"],["#f37f94","#a36aa5"],["#6d4145","#c16b27"],["#f58e84","#00978d"],["#b09f36","#a5c8d1"],["#ebd3a2","#004f46"],["#793327","#1e0e3f"],["#e2b540","#837e31"],["#f8b6ba","#c55347"],["#762c19","#40456a"],["#ffefae","#0093a5"],["#96874d","#80719e"],["#e0b3b6","#1c4286"],["#ebd3a2","#c16b27"],["#c27544","#4e1d4c"],["#a62c37","#f5ecc2"],["#e0b3b6","#719470"],["#007190","#1e0e3f"],["#ffdd00","#848061"],["#f37f94","#a84222"],["#ffefae","#42533e"],["#7c4226","#4b3317"],["#ffefae","#afd472"],["#f48067","#111314"],["#fdd4bd","#4b3317"],["#fcb315","#007190"],["#fbe6a0","#f15a30"],["#e0b3b6","#6450a1"],["#cc1236","#111314"],["#e2b540","#4b3317"],["#a5c8d1","#12354e"],["#e0b3b6","#ab2439"],["#7c4226","#d8a37b","#555832"],["#cc1236","#fdbf68","#00978d"],["#f58e84","#f8ed43","#7a4456"],["#802626","#e2b540","#a6a159"],["#d1b0a7","#0093a5","#40456a"],["#ebd3a2","#e2b540","#1c4286"],["#fdc57e","#648f7b","#66629c"],["#f8b6ba","#62c6bf","#9a72aa"],["#ffdd00","#bc892b","#97acc8"],["#bb7125","#a62c37","#4f4086"],["#bb7125","#d96629","#00939b"],["#f5ecc2","#f3a257","#b09f36"],["#82241f","#b09f36","#00b49b"],["#f37f94","#9a72aa","#59256a"],["#f5ecc2","#437742","#97acc8"],["#cb2f43","#009465","#59256a"],["#c55347","#fdc57e","#648f7b"],["#f3a257","#f8ed43","#62c6bf"],["#97acc8","#051230","#b6bfc1"],["#f3a257","#007190","#34454c"],["#f37420","#afd472","#12354e"],["#a94151","#c19f2c","#97acc8"],["#006eb8","#b984af","#a1a39a"],["#b73f74","#f37420","#111314"],["#7c4226","#b2b73e","#1e0e3f"],["#bc892b","#635a3a","#1a7444"],["#f27291","#82241f","#b5decc"],["#d6b43e","#fcb315","#0093a5"],["#d6b43e","#f37420","#112f2c"],["#fdd4bd","#b2b73e","#b4cdc2"],["#f5ecc2","#f99d1b","#064f6e"],["#c55347","#793327","#a5c8d1"],["#f37f94","#fcb315","#b2b73e"],["#cc1236","#fff200","#006eb8"],["#eb5324","#00978d","#051230"],["#d6b43e","#96d1aa","#4f4086"],["#7d133a","#d6b43e","#5a82b3"],["#f8ed43","#c27544","#87c540"],["#bc892b","#78cdd0","#b5b1d8"],["#c19f2c","#71502f","#547076"],["#7c4226","#eeb480","#005b8d"],["#d46d7a","#8fa071","#b984af"],["#ffdd00","#b5decc","#007190"],["#dd4027","#fcb315","#4f4086"],["#e0b3b6","#f27291","#6d4145"],["#f48067","#fbe6a0","#112f2c"],["#c2ae93","#a7d4e4","#064f6e"],["#f8ed43","#064f6e","#8c4c62"],["#f8b6ba","#ffefae","#a1a39a"],["#b73f74","#fcb315","#59256a"],["#802626","#f99d1b","#b4cdc2"],["#c27544","#007190","#59256a"],["#f8ed43","#762c19","#b5decc"],["#f8b6ba","#c0a9b3","#7a4456"],["#eeb480","#c1c494","#6450a1"],["#f9c1ce","#fdd4bd","#78cdd0"],["#802626","#96874d","#b5b1d8"],["#ebd3a2","#a5c8d1","#099197"],["#dd4027","#f3a257","#1c4286"],["#fdc57e","#9a72aa","#b6bfc1"],["#a62c37","#4f4086","#501345"],["#bb7125","#4b3317","#051230"],["#70727c","#8c4c62","#59256a"],["#f27291","#ebd3a2","#848061"],["#b59392","#c55347","#ffefae"],["#793327","#d8a37b","#006eb8"],["#005b8d","#c0a9b3","#a36aa5"],["#8fa071","#97acc8","#96d1aa"],["#f8ed43","#253122","#62c6bf"],["#ebd3a2","#d96629","#111314"],["#b59392","#e2b540","#006eb8"],["#fdbf68","#4b3317","#70727c"],["#f48067","#fbe6a0","#00908a"],["#eb5324","#fdd4bd","#5a82b3"],["#f27291","#ffefae","#b6bfc1"],["#b2b73e","#a7d4e4","#6450a1"],["#f37f94","#66629c","#b6bfc1"],["#ae5224","#ffdd00","#489b6e"],["#ab544d","#806e4b","#1c4286"],["#a62c37","#c1c494","#719470"],["#f48067","#837e31","#96d1aa"],["#b5decc","#96d1aa","#34454c"],["#ffefae","#eea78c","#555832"],["#b73f74","#c27544","#a5c8d1"],["#802626","#eea78c","#4f4086"],["#f8b6ba","#f3a257","#c27544"],["#a36752","#b4cdc2","#111314"],["#f5ecc2","#099197","#007190"],["#ebd3a2","#f99d1b","#97acc8"],["#fdc57e","#f8ed43","#555832"],["#f68c50","#a6a159","#051230"],["#ab2439","#986f2d","#97acc8"],["#eea78c","#ffdd00","#a7d4e4"],["#ebd3a2","#a36752","#4f4086"],["#fdbf68","#006eb8","#bf5892"],["#eb5324","#489b6e","#111314"],["#802626","#d8a37b","#1a7444"],["#005b8d","#b5b1d8","#70727c"],["#eb5324","#719470","#004f46"],["#b71f57","#d8a37b","#a36aa5"],["#a62c37","#b6bfc1","#111314"],["#e2b540","#f99d1b","#c16b27"],["#b59392","#d8a37b","#b5decc"],["#f27291","#547076","#7a4456"],["#cc1236","#004f46","#704357"],["#6d4145","#fdbf68","#4f4086"],["#f9c1ce","#a5c8d1","#0093a5"],["#a62c37","#ffefae","#b6bfc1"],["#f3a257","#253122","#b6bfc1"],["#f48067","#b5decc","#96d1aa"],["#e0b3b6","#793327","#5a82b3"],["#cc1236","#eeb480","#051230"],["#a62c37","#96874d","#40456a"],["#fdc57e","#71502f","#a7d4e4"],["#ebd3a2","#f99d1b","#c0a9b3"],["#bc892b","#1c4286","#84565b"],["#a62c37","#762c19","#97acc8"],["#d8a37b","#501345","#a1a39a"],["#b59392","#cab356","#b4cdc2"],["#f6917e","#fff200","#0093a5"],["#dd4027","#ffefae","#c5a56e","#547076"],["#f37f94","#ae5224","#1a7444","#111314"],["#bb7125","#ebd3a2","#6b7140","#34454c"],["#b59392","#c56127","#6d7e77","#007190"],["#a62c37","#819238","#12354e","#34454c"],["#f8b6ba","#a84222","#f5ecc2","#fdc57e"],["#bb7125","#ffdd00","#00978d","#1c4286"],["#f37f94","#bc892b","#b5b1d8","#704357"],["#793327","#c2ae93","#d6b43e","#547076"],["#cab356","#f15a30","#00b49b","#bce4e5"],["#a72144","#fff200","#1a7444","#34454c"],["#da525d","#bb7125","#c19f2c","#099197"],["#f8ed43","#f68c50","#501345","#34454c"],["#f8b6ba","#f5ecc2","#837e31","#ca92a8"],["#bb7125","#cab356","#78cdd0","#111314"],["#eea78c","#f37420","#009465","#111314"],["#e31f26","#fcb315","#006eb8","#a36aa5"],["#802626","#eeb480","#837e31","#007190"],["#f8ed43","#099197","#005b8d","#a1a39a"],["#d46d7a","#eea78c","#b4cdc2","#00b49b"],["#a72144","#ffefae","#78cdd0","#a1a39a"],["#da525d","#ebd3a2","#b09f36","#437742"],["#ae5224","#eeb480","#b5decc","#34454c"],["#f8b6ba","#dd4027","#b7c2a9","#0093a5"],["#d46d7a","#ffdd00","#a6a159","#1e0e3f"],["#e31f26","#ebd3a2","#8fa071","#00978d"],["#fdbf68","#f99d1b","#00978d","#006eb8"],["#b59392","#bb7125","#253122","#bce4e5"],["#bb7125","#802626","#a36aa5","#111314"],["#da525d","#f5ecc2","#6b7140","#437742"],["#b71f57","#96d1aa","#099197","#112f2c"],["#ffefae","#f37420","#b5decc","#97acc8"],["#f9c1ce","#7d133a","#a36752","#b6bfc1"],["#f15a30","#8b835b","#5a82b3","#9a72aa"],["#c55347","#c2ae93","#762c19","#7a4456"],["#f37f94","#fdd4bd","#afd472","#111314"],["#f27291","#b73f74","#837e31","#1e0e3f"],["#fdbf68","#d6b43e","#437742","#004f46"],["#bb7125","#eea78c","#c2ae93","#12354e"],["#da525d","#555832","#ca92a8","#7a4456"],["#ffefae","#00978d","#96d1aa","#007190"],["#da525d","#c59f6b","#96d1aa","#b984af"],["#ab544d","#802626","#719470","#62c6bf"],["#e2625e","#ffdd00","#00b49b","#004f46"],["#b59392","#ae5224","#f15a30","#b5decc"],["#ae5224","#fcb315","#00939b","#40456a"],["#f37f94","#cab356","#a7d4e4","#78cdd0"],["#f99d1b","#644b1e","#7a4456","#111314"],["#f8ed43","#c7d14f","#40456a","#1e0e3f"],["#6d4145","#ffefae","#555832","#96d1aa"],["#c7d14f","#00b49b","#96d1aa","#78cdd0"],["#ffefae","#eeb480","#c5a56e","#c2ae93"],["#bb7125","#b5decc","#709390","#489b6e"],["#f5ecc2","#fdbf68","#437742","#97acc8"],["#fdbf68","#fff200","#006eb8","#1e0e3f"],["#f5ecc2","#d8a37b","#71502f","#34454c"],["#ae5224","#f99d1b","#6b7140","#40456a"],["#bb7125","#f8ed43","#f15a30","#111314"],["#c53c69","#eea78c","#819238","#007190"],["#f48067","#fdbf68","#b5decc","#78cdd0"],["#e31f26","#ebd3a2","#8fa071","#a36aa5"],["#fdbf68","#c2ae93","#bce4e5","#007190"],["#fbe6a0","#f15a30","#253122","#b6bfc1"],["#793327","#fdbf68","#8b835b","#00978d"],["#eeb480","#ffdd00","#b2b73e","#b5decc"],["#f8ed43","#00978d","#009465","#bce4e5"],["#cc1236","#b5b1d8","#a36aa5","#501345"],["#d1b0a7","#cb2f43","#d96629","#96d1aa"],["#f3a257","#f68c50","#40456a","#064f6e"],["#f5ecc2","#eeb480","#837e31","#253122"],["#ab2439","#fdbf68","#b7c2a9","#c7d14f"],["#ae5224","#f99d1b","#709390","#005b8d"],["#cc1236","#fff200","#1a7444","#111314"],["#f37f94","#793327","#1c4286","#4e1d4c"],["#f48067","#f5ecc2","#f3a257","#bf5892"],["#82241f","#009465","#4f4086","#59256a"],["#fcc79b","#c2ae93","#f8ed43","#b5decc"],["#806e4b","#42533e","#004f46","#112f2c"],["#bb7125","#ffdd00","#f99d1b","#437742"],["#f58e84","#f5ecc2","#819238","#a5c8d1"],["#b59392","#f5ecc2","#253122","#97acc8"],["#e31f26","#a84222","#bf5892","#6450a1"],["#fdc57e","#b2b73e","#762c19","#111314"],["#ab2439","#5a82b3","#a36aa5","#b6bfc1"],["#da525d","#fbe6a0","#e2b540","#112f2c"],["#f5ecc2","#f15a30","#afd472","#87c540"],["#f37f94","#bb7125","#c2ae93","#c0a9b3"],["#a84222","#f68c50","#4b3317","#00908a"],["#fdbf68","#c0a9b3","#501345","#34454c"],["#c1c494","#bce4e5","#97acc8","#099197"],["#c53c69","#1e0e3f","#9a72aa","#4f4086"],["#f58e84","#cb2f43","#253122","#004f46"],["#ae5224","#f8ed43","#96d1aa","#006eb8"],["#fdd4bd","#837e31","#afd472","#007190"],["#82241f","#f99d1b","#4f4086","#34454c"],["#f37f94","#793327","#ffefae","#42533e"],["#6d4145","#ca92a8","#713b4c","#111314"],["#a62c37","#fcb315","#004f46","#c0a9b3"],["#d8a37b","#d96629","#a5c8d1","#40456a"],["#f15a30","#00b49b","#b6bfc1","#111314"],["#f48067","#437742","#253122","#a5c8d1"],["#f8b6ba","#fdbf68","#986f2d","#253122"],["#ae5224","#ebd3a2","#635a3a","#064f6e"],["#fdc57e","#1c4286","#a36aa5","#111314"],["#793327","#bce4e5","#62c6bf","#6450a1"],["#b73f74","#b5decc","#c7d14f","#6d7e77"],["#a6a159","#00b49b","#005b8d","#b984af"],["#c1c494","#437742","#253122","#501345"]];
+
+function hexDistSq(h1, h2) {
+  const [r1,g1,b1] = hexToRgb(h1);
+  const [r2,g2,b2] = hexToRgb(h2);
+  return (r1-r2)*(r1-r2) + (g1-g2)*(g1-g2) + (b1-b2)*(b1-b2);
+}
+function findNearestWadaColor(hex) {
+  let best = WADA_NAMES[0], bestDist = Infinity;
+  for(const entry of WADA_NAMES) {
+    const d = hexDistSq(hex, entry[1]);
+    if(d < bestDist) { bestDist = d; best = entry; }
+  }
+  return best; // [name, hex]
+}
+function getWadaPalettesForHex(hex) {
+  const nearest = findNearestWadaColor(hex);
+  const matches = WADA_PALETTES.filter(p => p.includes(nearest[1]));
+  return { nearest, matches };
+}
+
+/* ===================== PIECES ===================== */
+const PIECES = {
+  top: ['T-shirt','Chemise','Polo','Col roulé','Sweat','Hoodie','Veste','Blazer','Manteau','Bomber','Trench','Cardigan'],
+  bottom: ['Pantalon','Jean','Cargo','Chino','Short','Jogging'],
+  shoes: ['Sneakers','Derby','Boots','Loafers','Mocassins','Sandales'],
+  accessory: ['Casquette','Bonnet','Écharpe','Ceinture','Sac','Montre']
+};
+function assignPiece(index, total) {
+  if(total === 2) return index === 0 ? 'top+bottom' : 'shoes';
+  if(total === 3) return index===0 ? 'top' : index===1 ? 'bottom' : 'shoes';
+  if(index===0) return 'top';
+  if(index===1) return 'bottom';
+  if(index===2) return 'shoes';
+  return 'accessory';
+}
+function getRandPiece(cat) {
+  const arr = PIECES[cat] || PIECES.top;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function getPiecesForColor(index, total) {
+  const cat = assignPiece(index, total);
+  if(cat === 'top+bottom') return [getRandPiece('top'), getRandPiece('bottom')];
+  return [getRandPiece(cat)];
+}
+
+/* ===================== COLOR-THEORY MODES ===================== */
+const THEORY_MODES = {
+  analogous: { label: 'Harmonie analogue', mood: 'Fluidité naturelle',
+    fn: (h,s,l,n) => { const c=[hslToHex(h,s,l)]; const step=n<=2?40:n===3?30:22;
+      for(let i=1;i<n;i++){ const nh=(h+step*i)%360; c.push(hslToHex(nh, Math.max(s-8*i,20), Math.min(l+6*i,82))); } return c; } },
+  complementary: { label: 'Complémentaire', mood: 'Tension élégante',
+    fn: (h,s,l,n) => { const c=[hslToHex(h,s,l)];
+      if(n>=2) c.push(hslToHex((h+180)%360, Math.max(s-25,18), Math.min(l+18,84)));
+      if(n>=3) c.push(hslToHex(h, Math.max(s-40,12), Math.min(l+30,92)));
+      if(n>=4) c.push(hslToHex((h+180)%360, Math.max(s-10,22), Math.max(l-15,18))); return c; } },
+  split: { label: 'Split-complémentaire', mood: 'Vivacité maîtrisée',
+    fn: (h,s,l,n) => { const c=[hslToHex(h,s,l)];
+      if(n>=2) c.push(hslToHex((h+150)%360, Math.max(s-14,22), Math.min(l+5,75)));
+      if(n>=3) c.push(hslToHex((h+210)%360, Math.max(s-14,22), Math.min(l+5,75)));
+      if(n>=4) c.push(hslToHex(h, Math.max(s-38,8), Math.min(l+36,94))); return c; } },
+  triadic: { label: 'Triade', mood: 'Équilibre tricolore',
+    fn: (h,s,l,n) => { const c=[hslToHex(h,s,l)];
+      if(n>=2) c.push(hslToHex((h+120)%360, Math.max(s-18,18), Math.min(l+8,78)));
+      if(n>=3) c.push(hslToHex((h+240)%360, Math.max(s-18,18), Math.min(l+8,78)));
+      if(n>=4) c.push(hslToHex(h, Math.max(s-44,7), Math.min(l+38,94))); return c; } },
+  tetradic: { label: 'Tétrade', mood: 'Carré chromatique',
+    fn: (h,s,l,n) => { const c=[hslToHex(h,s,l)];
+      if(n>=2) c.push(hslToHex((h+90)%360, Math.max(s-15,20), Math.min(l+10,80)));
+      if(n>=3) c.push(hslToHex((h+180)%360, Math.max(s-20,18), Math.min(l+15,84)));
+      if(n>=4) c.push(hslToHex((h+270)%360, Math.max(s-15,20), Math.min(l+10,80))); return c; } },
+};
+
+let currentH=28, currentS=52, currentL=58;
+let currentHexValue = '#c4956a';
+let currentN=2;
+let currentMode='wada';
+
+function buildPaletteCard(title, mood, colors) {
+  const card = document.createElement('div');
+  card.className = 'palette-card';
+  const header = `<div class="palette-header"><span class="palette-name">${title}</span><span class="palette-mood">${mood}</span></div>`;
+  const swatchesHtml = colors.map(c => `<div class="p-swatch" style="background:${c};"><span class="p-swatch-hex">${c}</span></div>`).join('');
+  const piecesHtml = colors.map((c, i) => {
+    const pieces = getPiecesForColor(i, colors.length);
+    return pieces.map(p => `<div class="piece-tag"><div class="piece-dot" style="background:${c};"></div><span>${p}</span></div>`).join('');
+  }).join('');
+  card.innerHTML = `${header}<div class="palette-swatches">${swatchesHtml}</div><div class="pieces-grid">${piecesHtml}</div>`;
+  return card;
+}
+
+function renderPalettes() {
+  const section = document.getElementById('palettesSection');
+  section.innerHTML = '';
+
+  if(currentMode === 'wada') {
+    const { nearest, matches } = getWadaPalettesForHex(currentHexValue);
+    if(matches.length === 0) {
+      section.innerHTML = `<div class="empty-state">Aucune combinaison trouvée pour ${nearest[0]}.</div>`;
+      return;
+    }
+    // Filter by requested count, fallback to closest count available
+    let filtered = matches.filter(p => p.length === currentN);
+    if(filtered.length === 0) filtered = matches;
+    // Limit to a reasonable number of cards
+    filtered.slice(0, 8).forEach((paletteColors, idx) => {
+      const title = `Wada — ${nearest[0]}`;
+      const mood = `Combinaison #${idx+1} (${paletteColors.length} coul.)`;
+      section.appendChild(buildPaletteCard(title, mood, paletteColors));
+    });
+    return;
+  }
+
+  // Theory modes: single card per mode is misleading since user picked one mode —
+  // show that one mode generated from current HSL
+  const theory = THEORY_MODES[currentMode];
+  if(theory) {
+    const colors = theory.fn(currentH, currentS, currentL, currentN);
+    section.appendChild(buildPaletteCard(theory.label, theory.mood, colors));
+  }
+}
+
+function setCurrentColor(h, s, l) {
+  currentH = h; currentS = s; currentL = l;
+  currentHexValue = hslToHex(h, s, l);
+  renderPalettes();
+}
+
+/* ===================== TABS ===================== */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    stopCameraStream();
+  });
+});
+
+/* ===================== WHEEL ===================== */
+const wheelCanvas = document.getElementById('colorWheel');
+const wctx = wheelCanvas.getContext('2d');
+const WCX = 120, WCY = 120, WR = 116;
+
+function drawWheel() {
+  const imageData = wctx.createImageData(240, 240);
+  const data = imageData.data;
+  for (let y = 0; y < 240; y++) {
+    for (let x = 0; x < 240; x++) {
+      const dx = x - WCX, dy = y - WCY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist > WR) continue;
+      const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+      const sat = dist / WR;
+      const [r,g,b] = hslToRgb(angle / 360, sat, 0.55 - sat * 0.12);
+      const i = (y * 240 + x) * 4;
+      data[i]=r; data[i+1]=g; data[i+2]=b; data[i+3]=255;
+    }
+  }
+  wctx.putImageData(imageData, 0, 0);
+}
+drawWheel();
+
+function pickFromWheel(ex, ey) {
+  const rect = wheelCanvas.getBoundingClientRect();
+  const scaleX = wheelCanvas.width / rect.width;
+  const scaleY = wheelCanvas.height / rect.height;
+  const x = Math.round((ex - rect.left) * scaleX);
+  const y = Math.round((ey - rect.top) * scaleY);
+  const dx=x-WCX, dy=y-WCY;
+  if(dx*dx+dy*dy > WR*WR) return;
+  const d = wctx.getImageData(x,y,1,1).data;
+  const [h,s,l] = rgbToHsl(d[0],d[1],d[2]);
+  document.getElementById('wheelCursor').style.left = (x/wheelCanvas.width*100) + '%';
+  document.getElementById('wheelCursor').style.top = (y/wheelCanvas.height*100) + '%';
+  const hex = hslToHex(h,s,l);
+  document.getElementById('wheelSwatch').style.background = hex;
+  document.getElementById('wheelHex').textContent = hex;
+  document.getElementById('wheelName').textContent = getColorName(h,s,l);
+  setCurrentColor(h,s,l);
+}
+let wheelDragging=false;
+wheelCanvas.addEventListener('mousedown', e => { wheelDragging=true; pickFromWheel(e.clientX,e.clientY); });
+window.addEventListener('mousemove', e => { if(wheelDragging) pickFromWheel(e.clientX,e.clientY); });
+window.addEventListener('mouseup', () => wheelDragging=false);
+wheelCanvas.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; pickFromWheel(t.clientX,t.clientY); }, {passive:false});
+wheelCanvas.addEventListener('touchmove', e => { e.preventDefault(); const t=e.touches[0]; pickFromWheel(t.clientX,t.clientY); }, {passive:false});
+
+/* ===================== HEX INPUT ===================== */
+const hexInput = document.getElementById('hexInput');
+const hexError = document.getElementById('hexError');
+const hexPresetsRow = document.getElementById('hexPresets');
+
+const PRESET_HEXES = ['#C4956A','#2C3E50','#7F8C8D','#1B4332','#8B0000','#D4A574','#3A506B','#B5651D','#4A4A48','#E8DFD0'];
+PRESET_HEXES.forEach(hex => {
+  const sw = document.createElement('div');
+  sw.className = 'hex-swatch-preset';
+  sw.style.background = hex;
+  sw.addEventListener('click', () => { hexInput.value = hex.replace('#',''); applyHex(hex); });
+  hexPresetsRow.appendChild(sw);
+});
+
+function applyHex(hex) {
+  if(!isValidHex(hex)) {
+    hexError.textContent = 'Code invalide — utilise 6 caractères (ex: C4956A)';
+    document.getElementById('hexSummary').style.display = 'none';
+    return;
+  }
+  hexError.textContent = '';
+  if(!hex.startsWith('#')) hex = '#' + hex;
+  const [r,g,b] = hexToRgb(hex);
+  const [h,s,l] = rgbToHsl(r,g,b);
+  document.getElementById('hexSwatch').style.background = hex;
+  document.getElementById('hexName').textContent = getColorName(h,s,l);
+  document.getElementById('hexHexDisplay').textContent = hex.toUpperCase();
+  document.getElementById('hexSummary').style.display = 'flex';
+  setCurrentColor(h,s,l);
+}
+
+hexInput.addEventListener('input', () => {
+  let v = hexInput.value.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  hexInput.value = v;
+  if(v.length === 6 || v.length === 3) applyHex(v);
+  else if(v.length > 0) { hexError.textContent=''; document.getElementById('hexSummary').style.display='none'; }
+});
+
+/* ===================== PHOTO ===================== */
+const fileInput = document.getElementById('fileInput');
+const btnUpload = document.getElementById('btnUpload');
+const btnCamera = document.getElementById('btnCamera');
+const cameraStream = document.getElementById('cameraStream');
+const cameraControls = document.getElementById('cameraControls');
+const btnCapture = document.getElementById('btnCapture');
+const btnCancelCamera = document.getElementById('btnCancelCamera');
+const photoPreviewWrap = document.getElementById('photoPreviewWrap');
+const photoCanvas = document.getElementById('photoCanvas');
+const pctx = photoCanvas.getContext('2d');
+const photoTapMarker = document.getElementById('photoTapMarker');
+const detectedRow = document.getElementById('detectedRow');
+const detectedHint = document.getElementById('detectedHint');
+let mediaStream = null;
+
+btnUpload.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(file) loadImageFile(file);
+});
+
+btnCamera.addEventListener('click', async () => {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    cameraStream.srcObject = mediaStream;
+    cameraStream.style.display = 'block';
+    cameraControls.style.display = 'flex';
+    document.getElementById('photoActions').style.display = 'none';
+    photoPreviewWrap.style.display = 'none';
+    detectedRow.style.display = 'none';
+    detectedHint.style.display = 'none';
+  } catch(err) {
+    alert("Impossible d'accéder à la caméra. Vérifie les permissions de ton navigateur.");
+  }
+});
+
+function stopCameraStream() {
+  if(mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+  cameraStream.style.display = 'none';
+  cameraControls.style.display = 'none';
+  document.getElementById('photoActions').style.display = 'flex';
+}
+
+btnCancelCamera.addEventListener('click', stopCameraStream);
+
+btnCapture.addEventListener('click', () => {
+  const w = cameraStream.videoWidth, h = cameraStream.videoHeight;
+  const tmp = document.createElement('canvas');
+  tmp.width = w; tmp.height = h;
+  tmp.getContext('2d').drawImage(cameraStream, 0, 0, w, h);
+  tmp.toBlob(blob => loadImageFile(blob));
+  stopCameraStream();
+});
+
+function loadImageFile(fileOrBlob) {
+  const img = new Image();
+  const url = URL.createObjectURL(fileOrBlob);
+  img.onload = () => {
+    const maxW = 480;
+    const scale = Math.min(1, maxW / img.width);
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    photoCanvas.width = w;
+    photoCanvas.height = h;
+    pctx.drawImage(img, 0, 0, w, h);
+    photoPreviewWrap.style.display = 'block';
+    detectedHint.style.display = 'block';
+    URL.revokeObjectURL(url);
+    extractDominantColors();
+  };
+  img.src = url;
+}
+
+function extractDominantColors() {
+  const w = photoCanvas.width, h = photoCanvas.height;
+  const data = pctx.getImageData(0, 0, w, h).data;
+  const buckets = {};
+  const step = 4; // sample every 4th pixel for perf
+  for(let i=0; i<data.length; i += 4*step) {
+    const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+    if(a < 200) continue;
+    // skip near-white / near-black (likely background/shadow) lightly
+    const key = [Math.round(r/24)*24, Math.round(g/24)*24, Math.round(b/24)*24].join(',');
+    buckets[key] = (buckets[key]||0) + 1;
+  }
+  const sorted = Object.entries(buckets).sort((a,b) => b[1]-a[1]);
+  const top = [];
+  for(const [key] of sorted) {
+    const [r,g,b] = key.split(',').map(Number);
+    // avoid near duplicates
+    if(top.some(c => Math.abs(c[0]-r)<20 && Math.abs(c[1]-g)<20 && Math.abs(c[2]-b)<20)) continue;
+    top.push([r,g,b]);
+    if(top.length >= 3) break;
+  }
+  renderDetectedColors(top);
+}
+
+function renderDetectedColors(rgbList) {
+  detectedRow.innerHTML = '';
+  detectedRow.style.display = 'flex';
+  rgbList.forEach(([r,g,b], idx) => {
+    const hex = rgbToHex(r,g,b);
+    const sw = document.createElement('div');
+    sw.className = 'detected-swatch';
+    sw.style.background = hex;
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('.detected-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      selectPhotoColor(hex);
+    });
+    detectedRow.appendChild(sw);
+    if(idx === 0) { sw.classList.add('selected'); selectPhotoColor(hex); }
+  });
+}
+
+function selectPhotoColor(hex) {
+  const [r,g,b] = hexToRgb(hex);
+  const [h,s,l] = rgbToHsl(r,g,b);
+  document.getElementById('photoSwatch').style.background = hex;
+  document.getElementById('photoName').textContent = getColorName(h,s,l);
+  document.getElementById('photoHexDisplay').textContent = hex.toUpperCase();
+  document.getElementById('photoSummary').style.display = 'flex';
+  setCurrentColor(h,s,l);
+}
+
+function pickFromPhoto(ex, ey) {
+  const rect = photoCanvas.getBoundingClientRect();
+  const scaleX = photoCanvas.width / rect.width;
+  const scaleY = photoCanvas.height / rect.height;
+  const x = Math.round((ex - rect.left) * scaleX);
+  const y = Math.round((ey - rect.top) * scaleY);
+  if(x<0||y<0||x>=photoCanvas.width||y>=photoCanvas.height) return;
+  const d = pctx.getImageData(x,y,1,1).data;
+  const hex = rgbToHex(d[0],d[1],d[2]);
+  photoTapMarker.style.display = 'block';
+  photoTapMarker.style.left = ((ex-rect.left)/rect.width*100) + '%';
+  photoTapMarker.style.top = ((ey-rect.top)/rect.height*100) + '%';
+  document.querySelectorAll('.detected-swatch').forEach(s => s.classList.remove('selected'));
+  selectPhotoColor(hex);
+}
+photoCanvas.addEventListener('click', e => pickFromPhoto(e.clientX, e.clientY));
+photoCanvas.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; pickFromPhoto(t.clientX,t.clientY); }, {passive:false});
+
+/* ===================== COUNT SELECTOR ===================== */
+document.getElementById('countBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.count-btn');
+  if(!btn) return;
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentN = parseInt(btn.dataset.n);
+  renderPalettes();
+});
+
+/* ===================== MODE SELECTOR ===================== */
+const MODE_HINTS = {
+  wada: "Vraies combinaisons du dictionnaire de Sanzo Wada (348 palettes, 159 couleurs).",
+  analogous: "Couleurs voisines sur le cercle chromatique — effet fluide et naturel.",
+  complementary: "Couleur opposée sur le cercle chromatique — fort contraste.",
+  split: "Deux couleurs voisines de l'opposée — contraste plus doux qu'un complémentaire pur.",
+  triadic: "Trois couleurs équidistantes sur le cercle chromatique.",
+  tetradic: "Quatre couleurs en carré sur le cercle chromatique — riche et équilibré."
+};
+document.getElementById('modeGrid').addEventListener('click', e => {
+  const btn = e.target.closest('.mode-btn');
+  if(!btn) return;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  document.getElementById('modeHint').textContent = MODE_HINTS[currentMode] || '';
+  renderPalettes();
+});
+
+/* ===================== INIT ===================== */
+function initWheelSelection() {
+  const rect = wheelCanvas.getBoundingClientRect();
+  if(rect.width === 0) { requestAnimationFrame(initWheelSelection); return; }
+  pickFromWheel(rect.left + rect.width * 0.62, rect.top + rect.height * 0.62);
+}
+requestAnimationFrame(initWheelSelection);
+</script>
+</body>
+</html>
