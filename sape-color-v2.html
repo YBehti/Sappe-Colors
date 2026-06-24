@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sape Color</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{--bg:#F7F6F2;--surface:#FFFFFF;--border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.18);--text:#1A1A18;--text-2:#6B6A65;--text-3:#A09F9A;--radius:14px;--radius-sm:10px;}
+@media(prefers-color-scheme:dark){:root{--bg:#141412;--surface:#1E1E1B;--border:rgba(255,255,255,0.1);--border-strong:rgba(255,255,255,0.18);--text:#F0EFE9;--text-2:#9A9992;--text-3:#5A5952;}}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-text-size-adjust:100%;}
+.app{max-width:480px;margin:0 auto;padding:1.25rem 1rem 3rem;}
+header{margin-bottom:1.25rem;}
+header h1{font-size:24px;font-weight:600;letter-spacing:-0.4px;margin-bottom:2px;}
+header p{font-size:13px;color:var(--text-2);line-height:1.4;}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
+.section-label{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:.75rem;}
+.tabs{display:flex;gap:6px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:1rem;}
+.tab-btn{flex:1;padding:10px 4px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;}
+.tab-btn.active{background:var(--text);color:var(--bg);}
+.tab-btn svg{width:15px;height:15px;flex-shrink:0;}
+.panel{display:none;}.panel.active{display:block;}
+/* WHEEL */
+.wheel-center{display:flex;flex-direction:column;align-items:center;gap:1rem;}
+.wheel-wrap{position:relative;touch-action:none;}
+#colorWheel{display:block;border-radius:50%;cursor:crosshair;touch-action:none;}
+.wheel-cursor{position:absolute;width:18px;height:18px;border-radius:50%;border:3px solid white;outline:1.5px solid rgba(0,0,0,0.4);pointer-events:none;transform:translate(-50%,-50%);}
+/* HEX */
+.hex-input-row{display:flex;gap:8px;align-items:center;}
+.hex-prefix{font-size:16px;color:var(--text-3);font-family:monospace;padding:0 2px;}
+#hexInput{flex:1;font-size:16px;font-family:monospace;padding:12px 14px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text);width:100%;text-transform:uppercase;}
+#hexInput:focus{outline:2px solid var(--text);outline-offset:-1px;}
+.hex-error{font-size:12px;color:#C0392B;margin-top:6px;min-height:16px;}
+.hex-swatches-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.hex-swatch-preset{width:32px;height:32px;border-radius:8px;border:0.5px solid var(--border);cursor:pointer;flex-shrink:0;}
+/* PHOTO */
+.photo-actions{display:flex;gap:8px;}
+.photo-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:1.5rem .5rem;border-radius:var(--radius-sm);border:1.5px dashed var(--border-strong);background:var(--bg);color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;}
+.photo-btn svg{width:26px;height:26px;}
+.photo-preview-wrap{position:relative;margin-top:1rem;border-radius:var(--radius-sm);overflow:hidden;}
+#photoCanvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none;}
+.photo-tap-marker{position:absolute;width:22px;height:22px;border-radius:50%;border:3px solid white;outline:1.5px solid rgba(0,0,0,0.4);pointer-events:none;transform:translate(-50%,-50%);display:none;}
+.detected-row{display:flex;gap:10px;margin-top:1rem;}
+.detected-swatch{flex:1;height:56px;border-radius:var(--radius-sm);border:2px solid transparent;cursor:pointer;}
+.detected-swatch.selected{border-color:var(--text);}
+.detected-hint{font-size:11px;color:var(--text-3);margin-top:8px;text-align:center;}
+video#cameraStream{display:block;width:100%;border-radius:var(--radius-sm);margin-top:1rem;}
+.camera-controls{display:flex;gap:8px;margin-top:10px;}
+.camera-btn{flex:1;padding:10px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;}
+.camera-btn.primary{background:var(--text);color:var(--bg);border-color:var(--text);}
+/* SHARED SUMMARY */
+.selected-summary{display:flex;align-items:center;gap:12px;padding:12px;margin-top:0;background:var(--bg);border-radius:var(--radius-sm);}
+.selected-summary .swatch{width:44px;height:44px;border-radius:10px;border:0.5px solid var(--border);flex-shrink:0;}
+.selected-summary .meta{display:flex;flex-direction:column;gap:1px;}
+.selected-summary .name{font-size:14px;font-weight:600;}
+.selected-summary .hex{font-size:12px;color:var(--text-2);font-family:monospace;}
+/* COUNT */
+.count-row{display:flex;align-items:center;justify-content:space-between;}
+.count-label{font-size:13px;color:var(--text-2);}
+.count-btns{display:flex;gap:6px;}
+.count-btn{width:38px;height:38px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:transparent;color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;}
+.count-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+/* MODE */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mode-btn{padding:10px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:transparent;color:var(--text-2);font-size:12.5px;font-weight:500;cursor:pointer;text-align:center;}
+.mode-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+.mode-hint{font-size:11.5px;color:var(--text-3);margin-top:10px;line-height:1.4;}
+/* WEATHER */
+.weather-row{display:flex;align-items:center;gap:10px;}
+.weather-icon{font-size:28px;flex-shrink:0;}
+.weather-info{flex:1;min-width:0;}
+.weather-temp{font-size:20px;font-weight:600;letter-spacing:-0.5px;}
+.weather-desc{font-size:12px;color:var(--text-2);margin-top:1px;}
+.weather-badge{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:20px;}
+.weather-badge.cold{background:#dbeafe;color:#1e40af;}
+.weather-badge.cool{background:#e0f2fe;color:#0369a1;}
+.weather-badge.mild{background:#dcfce7;color:#166534;}
+.weather-badge.warm{background:#fef9c3;color:#854d0e;}
+.weather-badge.hot{background:#fee2e2;color:#991b1b;}
+.weather-loc-row{display:flex;gap:6px;margin-top:10px;}
+.weather-loc-input{flex:1;font-size:13px;padding:8px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text);}
+.weather-loc-input:focus{outline:2px solid var(--text);outline-offset:-1px;}
+.weather-btn{padding:8px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:transparent;color:var(--text);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;}
+.weather-btn.primary{background:var(--text);color:var(--bg);border-color:var(--text);}
+.weather-status{font-size:11.5px;color:var(--text-3);margin-top:6px;min-height:16px;}
+/* PROFIL COLORIMETRIE */
+.profile-bar{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:1rem;cursor:pointer;}
+.profile-avatar{flex-shrink:0;}
+.profile-meta{flex:1;min-width:0;}
+.profile-season{font-size:13px;font-weight:600;}
+.profile-sub{font-size:11px;color:var(--text-3);}
+.profile-edit-btn{font-size:12px;color:var(--text-3);border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;background:transparent;cursor:pointer;white-space:nowrap;}
+/* QUIZ */
+.quiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.quiz-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:1.5rem 1.25rem 2.5rem;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;}
+.quiz-title{font-size:17px;font-weight:600;margin-bottom:4px;}
+.quiz-sub{font-size:13px;color:var(--text-2);margin-bottom:1.25rem;}
+.quiz-step-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:.75rem;}
+.quiz-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.25rem;}
+.quiz-swatch-btn{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;border:none;background:transparent;padding:0;}
+.quiz-swatch-circle{width:52px;height:52px;border-radius:50%;border:3px solid transparent;transition:border-color .12s;}
+.quiz-swatch-btn.selected .quiz-swatch-circle{border-color:var(--text);}
+.quiz-swatch-label{font-size:10px;color:var(--text-3);text-align:center;line-height:1.2;}
+.quiz-nav{display:flex;gap:8px;margin-top:.5rem;}
+.quiz-btn{flex:1;padding:12px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:transparent;color:var(--text);font-size:14px;font-weight:500;cursor:pointer;}
+.quiz-btn.primary{background:var(--text);color:var(--bg);border-color:var(--text);}
+.quiz-progress{display:flex;gap:4px;margin-bottom:1.25rem;}
+.quiz-dot{flex:1;height:3px;border-radius:2px;background:var(--border);}
+.quiz-dot.done{background:var(--text);}
+/* PALETTES */
+.palettes-section{display:flex;flex-direction:column;gap:.75rem;}
+.palette-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;}
+.palette-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem;gap:8px;}
+.palette-name{font-size:13px;font-weight:600;}
+.palette-mood{font-size:11px;color:var(--text-3);font-style:italic;text-align:right;}
+.palette-swatches{display:flex;gap:6px;margin-bottom:.75rem;}
+.p-swatch{flex:1;height:48px;border-radius:8px;border:0.5px solid rgba(0,0,0,0.07);position:relative;min-width:0;cursor:pointer;transition:transform .1s,outline .1s;}
+.p-swatch:hover{transform:scale(1.06);outline:2px solid var(--text);}
+.p-swatch-hex{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:8px;font-family:monospace;color:rgba(255,255,255,.85);text-shadow:0 1px 2px rgba(0,0,0,.5);pointer-events:none;user-select:none;overflow:hidden;}
+.pieces-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.piece-tag{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:16px;border:0.5px solid var(--border);font-size:11.5px;color:var(--text-2);background:var(--bg);}
+.piece-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:0.5px solid rgba(0,0,0,.12);}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text-3);font-size:13px;}
+hr.divider{border:none;border-top:0.5px solid var(--border);margin:1rem 0;}
+input[type="file"]{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Sape Color</h1>
+    <p>Couleur de base · Météo · Colorimétrie · Matching parfait.</p>
+  </header>
+
+  <!-- PROFIL COLORIMETRIE BAR -->
+  <div class="profile-bar" id="profileBar">
+    <div class="profile-avatar"><svg id="profileAvatarSvg" width="44" height="44" viewBox="0 0 44 44"></svg></div>
+    <div class="profile-meta">
+      <div class="profile-season" id="profileSeasonLabel">Configure ton profil</div>
+      <div class="profile-sub" id="profileSubLabel">Pour des suggestions adaptées à ta colorimétrie</div>
+    </div>
+    <button class="profile-edit-btn" id="profileEditBtn">Modifier</button>
+  </div>
+
+  <!-- MÉTÉO -->
+  <div class="card" id="weatherCard">
+    <div class="section-label">Météo du jour</div>
+    <div id="weatherDisplay" style="display:none;">
+      <div class="weather-row">
+        <span class="weather-icon" id="wIcon">☁️</span>
+        <div class="weather-info">
+          <div class="weather-temp" id="wTemp">—</div>
+          <div class="weather-desc" id="wDesc">—</div>
+        </div>
+        <span class="weather-badge" id="wBadge">—</span>
+      </div>
+    </div>
+    <div class="weather-loc-row">
+      <input class="weather-loc-input" id="cityInput" type="text" placeholder="Ville (ex: Liège)" autocomplete="off"/>
+      <button class="weather-btn primary" id="btnCitySearch">Chercher</button>
+      <button class="weather-btn" id="btnGeoLoc" title="Localisation auto">📍</button>
+    </div>
+    <div class="weather-status" id="weatherStatus">Entre ta ville ou utilise la géolocalisation.</div>
+  </div>
+
+  <!-- TABS COULEUR -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="wheel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>Roue
+    </button>
+    <button class="tab-btn" data-tab="hex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Hex
+    </button>
+    <button class="tab-btn" data-tab="photo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M9 6l1-2h4l1 2"/></svg>Photo
+    </button>
+  </div>
+
+  <!-- WHEEL PANEL -->
+  <div class="panel active" id="panel-wheel">
+    <div class="card">
+      <div class="section-label">Roue chromatique</div>
+      <div class="wheel-center">
+        <div class="wheel-wrap">
+          <canvas id="colorWheel" width="240" height="240"></canvas>
+          <div class="wheel-cursor" id="wheelCursor" style="left:120px;top:120px;"></div>
+        </div>
+        <div class="selected-summary" style="width:100%;">
+          <div class="swatch" id="wheelSwatch" style="background:#C4956A;"></div>
+          <div class="meta">
+            <span class="name" id="wheelName">Caramel chaud</span>
+            <span class="hex" id="wheelHex">#C4956A</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEX PANEL -->
+  <div class="panel" id="panel-hex">
+    <div class="card">
+      <div class="section-label">Code hexadécimal</div>
+      <div class="hex-input-row">
+        <span class="hex-prefix">#</span>
+        <input type="text" id="hexInput" placeholder="C4956A" maxlength="7" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="hex-error" id="hexError"></div>
+      <div class="selected-summary" id="hexSummary" style="display:none;">
+        <div class="swatch" id="hexSwatch"></div>
+        <div class="meta">
+          <span class="name" id="hexName"></span>
+          <span class="hex" id="hexHexDisplay"></span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="section-label" style="margin-bottom:.5rem;">Ou essaie</div>
+      <div class="hex-swatches-row" id="hexPresets"></div>
+    </div>
+  </div>
+
+  <!-- PHOTO PANEL -->
+  <div class="panel" id="panel-photo">
+    <div class="card">
+      <div class="section-label">Depuis une photo</div>
+      <div class="photo-actions" id="photoActions">
+        <button class="photo-btn" id="btnUpload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>Galerie
+        </button>
+        <button class="photo-btn" id="btnCamera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M9 6l1-2h4l1 2"/></svg>Caméra
+        </button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+      <video id="cameraStream" autoplay playsinline muted style="display:none;"></video>
+      <div class="camera-controls" id="cameraControls" style="display:none;">
+        <button class="camera-btn primary" id="btnCapture">Capturer</button>
+        <button class="camera-btn" id="btnCancelCamera">Annuler</button>
+      </div>
+      <div class="photo-preview-wrap" id="photoPreviewWrap" style="display:none;">
+        <canvas id="photoCanvas"></canvas>
+        <div class="photo-tap-marker" id="photoTapMarker"></div>
+      </div>
+      <div class="detected-hint" id="detectedHint" style="display:none;">Tape sur la photo ou choisis une couleur détectée</div>
+      <div class="detected-row" id="detectedRow" style="display:none;"></div>
+      <div class="selected-summary" id="photoSummary" style="display:none;margin-top:1rem;">
+        <div class="swatch" id="photoSwatch"></div>
+        <div class="meta">
+          <span class="name" id="photoName"></span>
+          <span class="hex" id="photoHexDisplay"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COUNT + MODE -->
+  <div class="card">
+    <div class="count-row">
+      <span class="count-label">Couleurs à porter</span>
+      <div class="count-btns" id="countBtns">
+        <button class="count-btn active" data-n="2">2</button>
+        <button class="count-btn" data-n="3">3</button>
+        <button class="count-btn" data-n="4">4</button>
+      </div>
+    </div>
+    <hr class="divider">
+    <div class="section-label" style="margin-bottom:.5rem;">Méthode de matching</div>
+    <div class="mode-grid" id="modeGrid">
+      <button class="mode-btn active" data-mode="wada">Wada</button>
+      <button class="mode-btn" data-mode="analogous">Analogue</button>
+      <button class="mode-btn" data-mode="complementary">Complémentaire</button>
+      <button class="mode-btn" data-mode="split">Split-complémentaire</button>
+      <button class="mode-btn" data-mode="triadic">Triade</button>
+      <button class="mode-btn" data-mode="tetradic">Tétrade</button>
+    </div>
+    <p class="mode-hint" id="modeHint">Vraies combinaisons du dictionnaire de Sanzo Wada (348 palettes, 159 couleurs).</p>
+  </div>
+
+  <div class="section-label" style="padding:0 4px 8px;">Combinaisons suggérées</div>
+  <div class="palettes-section" id="palettesSection">
+    <div class="empty-state">Choisis une couleur ci-dessus pour commencer</div>
+  </div>
+</div>
+
+<!-- QUIZ OVERLAY -->
+<div class="quiz-overlay" id="quizOverlay" style="display:none;">
+  <div class="quiz-sheet">
+    <div class="quiz-title">Ton profil colorimétrique</div>
+    <div class="quiz-sub">Clique sur la teinte qui te ressemble le mieux</div>
+    <div class="quiz-progress" id="quizProgress"></div>
+    <div class="quiz-step-label" id="quizStepLabel"></div>
+    <div class="quiz-swatches" id="quizSwatches"></div>
+    <div class="quiz-nav">
+      <button class="quiz-btn" id="quizBack">Retour</button>
+      <button class="quiz-btn primary" id="quizNext">Suivant</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== COLOR UTILS ===== */
+function hslToRgb(h,s,l){let r,g,b;if(s===0){r=g=b=l;}else{const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);}return[Math.round(r*255),Math.round(g*255),Math.round(b*255)];}
+function hue2rgb(p,q,t){if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;}
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}
+function hexToRgb(hex){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');return[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];}
+function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;if(max===min){h=s=0;}else{const d=max-min;s=l>.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h/=6;}return[h*360,s*100,l*100];}
+function hslToHex(h,s,l){const[r,g,b]=hslToRgb(h/360,s/100,l/100);return rgbToHex(r,g,b);}
+function isValidHex(hex){return/^#?([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/.test(hex);}
+function hexDistSq(h1,h2){const[r1,g1,b1]=hexToRgb(h1),[r2,g2,b2]=hexToRgb(h2);return(r1-r2)**2+(g1-g2)**2+(b1-b2)**2;}
+function getColorName(h,s,l){if(s<12)return l<25?'Noir charbon':l<50?'Gris anthracite':l<75?'Gris clair':'Blanc cassé';if(l<18)return'Ton très sombre';if(l>85)return'Ton très pâle';if(h<18||h>=345)return s>55?'Rouge sang':'Rouge doux';if(h<38)return s>55?'Orange brûlé':l<50?'Terracotta':'Caramel chaud';if(h<58)return l<55?'Ambre doré':'Ocre clair';if(h<75)return l<55?'Olive':'Jaune doux';if(h<105)return'Vert olive';if(h<150)return l<45?'Vert forêt':'Vert sauge';if(h<175)return'Vert mousse';if(h<205)return s>50?'Bleu canard':'Bleu gris';if(h<230)return'Bleu ciel';if(h<255)return'Bleu marine';if(h<275)return'Indigo';if(h<295)return l>60?'Lavande':'Violet profond';if(h<320)return'Mauve';return'Rose ancien';}
+
+/* ===== WADA DATASET ===== */
+const WADA_NAMES=[["Hermosa Pink","#f9c1ce"],["Corinthian Pink","#f8b6ba"],["Cameo Pink","#e0b3b6"],["Fawn","#d1b0a7"],["Light Brown Drab","#b59392"],["Coral Red","#f58e84"],["Fresh Color","#f6917e"],["Grenadine Pink","#f48067"],["Eosine Pink","#f37f94"],["Spinel Red","#f27291"],["Old Rose","#d46d7a"],["Eugenia Red A","#e2625e"],["Eugenia Red B","#da525d"],["Raw Sienna","#bb7125"],["Vinaceous Tawny","#c56127"],["Jasper Red","#eb5324"],["Spectrum Red","#e31f26"],["Red Orange","#dd4027"],["Etruscan Red","#c55347"],["Burnt Sienna","#ae5224"],["Ochre Red","#ab544d"],["Scarlet","#cb2f43"],["Carmine","#cc1236"],["Indian Lake","#c53c69"],["Rosolanc Purple","#b73f74"],["Pomegranite Purple","#b71f57"],["Hydrangea Red","#a94151"],["Brick Red","#a84222"],["Carmine Red","#a62c37"],["Pompeian Red","#ab2439"],["Red","#a72144"],["Brown","#7c4226"],["Hay's Russet","#793327"],["Vandyke Red","#82241f"],["Pansy Purple","#7d133a"],["Pale Burnt Lake","#802626"],["Violet Red","#642d5e"],["Vistoris Lake","#6d4145"],["Sulpher Yellow","#f5ecc2"],["Pale Lemon Yellow","#ffefae"],["Naples Yellow","#fbe6a0"],["Ivory Buff","#ebd3a2"],["Seashell Pink","#fdd4bd"],["Light Pinkish Cinnamon","#fcc79b"],["Pinkish Cinnamon","#eeb480"],["Cinnamon Buff","#fdc57e"],["Cream Yellow","#fdbf68"],["Golden Yellow","#f3a257"],["Vinaceous Cinnamon","#eea78c"],["Ochraceous Salmon","#d8a37b"],["Isabella Color","#c5a56e"],["Maple","#c59f6b"],["Olive Buff","#c1c494"],["Ecru","#c2ae93"],["Yellow","#fff200"],["Lemon Yellow","#f8ed43"],["Apricot Yellow","#ffdd00"],["Pyrite Yellow","#cab356"],["Olive Ocher","#d6b43e"],["Yellow Ocher","#e2b540"],["Orange Yellow","#fcb315"],["Yellow Orange","#f99d1b"],["Apricot Orange","#f68c50"],["Orange","#f37420"],["Peach Red","#f15a30"],["English Red","#d96629"],["Cinnamon Rufous","#c27544"],["Orange Rufous","#c16b27"],["Sulphine Yellow","#c19f2c"],["Khaki","#bc892b"],["Citron Yellow","#b2b73e"],["Citrine","#b09f36"],["Buffy Citrine","#96874d"],["Dark Citrine","#8b835b"],["Light Grayish Olive","#848061"],["Krongbergs Green","#84875e"],["Olive","#837e31"],["Orange Citrine","#986f2d"],["Sudan Brown","#a36752"],["Olive Green","#6b7140"],["Light Brownish Olive","#806e4b"],["Deep Grayish Olive","#635a3a"],["Pale Raw Umber","#71502f"],["Sepia","#644b1e"],["Madder Brown","#762c19"],["Mars Brown Tobacco","#653514"],["Vandyke Brown","#4b3317"],["Turquoise Green","#b5decc"],["Glaucous Green","#b4cdc2"],["Dark Greenish Glaucous","#b7c2a9"],["Yellow Green","#afd472"],["Light Green Yellow","#c7d14f"],["Night Green","#87c540"],["Olive Yellow","#a6a159"],["Artemesia Green","#709390"],["Andover Green","#6d7e77"],["Rainette Green","#8fa071"],["Chromium Green","#719470"],["Pistachio Green","#648f7b"],["Sea Green","#00b49b"],["Benzol Green","#00978d"],["Light Porcelain Green","#00908a"],["Green","#489b6e"],["Dull Viridian Green","#009465"],["Oil Green","#819238"],["Diamine Green","#1a7444"],["Cossack Green","#437742"],["Lincoln Green","#555832"],["Blackish Olive","#42533e"],["Deep Slate Olive","#253122"],["Nile Blue","#bce4e5"],["Pale King's Blue","#a7d4e4"],["Light Glaucous Blue","#a5c8d1"],["Salvia Blue","#97acc8"],["Cobalt Green","#96d1aa"],["Calamine Blue","#78cdd0"],["Venice Green","#62c6bf"],["Cerulian Blue","#0093a5"],["Peacock Blue","#00939b"],["Green Blue","#099197"],["Olympic Blue","#5a82b3"],["Blue","#006eb8"],["Antwarp Blue","#007190"],["Helvetia Blue","#005b8d"],["Dark Medici Blue","#547076"],["Dusky Green","#004f46"],["Deep Lyons Blue","#1c4286"],["Violet Blue","#40456a"],["Vandar Poel's Blue","#064f6e"],["Dark Tyrian Blue","#12354e"],["Dull Violet Black","#1e0e3f"],["Deep Indigo","#051230"],["Deep Slate Green","#112f2c"],["Grayish Lavender A","#b5b1d8"],["Grayish Lavender B","#c0a9b3"],["Laelia Pink","#ca92a8"],["Lilac","#b984af"],["Eupatorium Purple","#bf5892"],["Light Mauve","#9a72aa"],["Aconite Violet","#a36aa5"],["Dull Blue Violet","#80719e"],["Dark Soft Violet","#66629c"],["Blue Violet","#6450a1"],["Purple Drab","#84565b"],["Deep Violet Plumbeous","#70727c"],["Veronia Purple","#8c4c62"],["Dark Slate Purple","#704357"],["Taupe Brown","#7a4456"],["Violet Carmine","#713b4c"],["Violet","#4f4086"],["Red Violet","#59256a"],["Cotinga Purple","#501345"],["Dusky Madder Violet","#4e1d4c"],["White","#ffffff"],["Neutral Gray","#b6bfc1"],["Mineral Gray","#a2b0ad"],["Warm Gray","#a1a39a"],["Slate Color","#34454c"],["Black","#111314"]];
+const WADA_PALETTES=[["#f9c1ce","#fdd4bd","#78cdd0"],["#f9c1ce","#a5c8d1","#0093a5"],["#f9c1ce","#7d133a","#a36752","#b6bfc1"],["#f8b6ba","#34454c"],["#f8b6ba","#a36aa5"],["#f8b6ba","#b2b73e"],["#f8b6ba","#c55347"],["#f8b6ba","#62c6bf","#9a72aa"],["#f8b6ba","#ffefae","#a1a39a"],["#f8b6ba","#c0a9b3","#7a4456"],["#f8b6ba","#f3a257","#c27544"],["#f8b6ba","#a84222","#f5ecc2","#fdc57e"],["#f8b6ba","#f5ecc2","#837e31","#ca92a8"],["#f8b6ba","#dd4027","#b7c2a9","#0093a5"],["#f8b6ba","#fdbf68","#986f2d","#253122"],["#e0b3b6","#1c4286"],["#e0b3b6","#719470"],["#e0b3b6","#6450a1"],["#e0b3b6","#ab2439"],["#e0b3b6","#f27291","#6d4145"],["#e0b3b6","#793327","#5a82b3"],["#d1b0a7","#4e1d4c"],["#d1b0a7","#0093a5","#40456a"],["#d1b0a7","#cb2f43","#d96629","#96d1aa"],["#b59392","#a62c37"],["#b59392","#fff200"],["#b59392","#c55347","#ffefae"],["#b59392","#e2b540","#006eb8"],["#b59392","#d8a37b","#b5decc"],["#b59392","#cab356","#b4cdc2"],["#b59392","#c56127","#6d7e77","#007190"],["#b59392","#bb7125","#253122","#bce4e5"],["#b59392","#ae5224","#f15a30","#b5decc"],["#b59392","#f5ecc2","#253122","#97acc8"],["#f58e84","#00978d"],["#f58e84","#f8ed43","#7a4456"],["#f58e84","#f5ecc2","#819238","#a5c8d1"],["#f58e84","#cb2f43","#253122","#004f46"],["#f6917e","#fff200","#0093a5"],["#f48067","#051230"],["#f48067","#00b49b"],["#f48067","#111314"],["#f48067","#fbe6a0","#112f2c"],["#f48067","#fbe6a0","#00908a"],["#f48067","#837e31","#96d1aa"],["#f48067","#b5decc","#96d1aa"],["#f48067","#fdbf68","#b5decc","#78cdd0"],["#f48067","#f5ecc2","#f3a257","#bf5892"],["#f48067","#437742","#253122","#a5c8d1"],["#f37f94","#b6bfc1"],["#a62c37","#006eb8"],["#f5ecc2","#111314"],["#f99d1b","#4e1d4c"],["#00978d","#a5c8d1"],["#d46d7a","#ffffff"],["#c0a9b3","#4f4086"],["#7a4456","#34454c"],["#793327","#00b49b"],["#f37f94","#b09f36"],["#ffefae","#12354e"],["#c7d14f","#501345"],["#fff200","#111314"],["#6d4145","#0093a5"],["#a36aa5","#66629c"],["#c19f2c","#78cdd0"],["#d6b43e","#6b7140"],["#5a82b3","#12354e"],["#b59392","#fff200"],["#a1a39a","#111314"],["#bb7125","#555832"],["#ab2439","#d8a37b"],["#f5ecc2","#a7d4e4"],["#71502f","#8fa071"],["#b5decc","#099197"],["#a7d4e4","#40456a"],["#ffefae","#a1a39a"],["#da525d","#064f6e"],["#eeb480","#62c6bf"],["#762c19","#099197"],["#f5ecc2","#9a72aa"],["#f3a257","#a1a39a"],["#793327","#4e1d4c"],["#c1c494","#40456a"],["#fdd4bd","#112f2c"],["#c56127","#007190"],["#bb7125","#00b49b"],["#f8b6ba","#b2b73e"],["#fdd4bd","#006eb8"],["#f99d1b","#40456a"],["#f37f94","#a36aa5"],["#6d4145","#c16b27"],["#f58e84","#00978d"],["#b09f36","#a5c8d1"],["#ebd3a2","#004f46"],["#793327","#1e0e3f"],["#e2b540","#837e31"],["#f8b6ba","#c55347"],["#762c19","#40456a"],["#ffefae","#0093a5"],["#96874d","#80719e"],["#e0b3b6","#1c4286"],["#ebd3a2","#c16b27"],["#c27544","#4e1d4c"],["#a62c37","#f5ecc2"],["#e0b3b6","#719470"],["#007190","#1e0e3f"],["#ffdd00","#848061"],["#f37f94","#a84222"],["#ffefae","#42533e"],["#7c4226","#4b3317"],["#ffefae","#afd472"],["#f48067","#111314"],["#fdd4bd","#4b3317"],["#fcb315","#007190"],["#fbe6a0","#f15a30"],["#e0b3b6","#6450a1"],["#cc1236","#111314"],["#e2b540","#4b3317"],["#a5c8d1","#12354e"],["#e0b3b6","#ab2439"],["#7c4226","#d8a37b","#555832"],["#cc1236","#fdbf68","#00978d"],["#f58e84","#f8ed43","#7a4456"],["#802626","#e2b540","#a6a159"],["#d1b0a7","#0093a5","#40456a"],["#ebd3a2","#e2b540","#1c4286"],["#fdc57e","#648f7b","#66629c"],["#f8b6ba","#62c6bf","#9a72aa"],["#ffdd00","#bc892b","#97acc8"],["#bb7125","#a62c37","#4f4086"],["#bb7125","#d96629","#00939b"],["#f5ecc2","#f3a257","#b09f36"],["#82241f","#b09f36","#00b49b"],["#f37f94","#9a72aa","#59256a"],["#f5ecc2","#437742","#97acc8"],["#cb2f43","#009465","#59256a"],["#c55347","#fdc57e","#648f7b"],["#f3a257","#f8ed43","#62c6bf"],["#97acc8","#051230","#b6bfc1"],["#f3a257","#007190","#34454c"],["#f37420","#afd472","#12354e"],["#a94151","#c19f2c","#97acc8"],["#006eb8","#b984af","#a1a39a"],["#b73f74","#f37420","#111314"],["#7c4226","#b2b73e","#1e0e3f"],["#bc892b","#635a3a","#1a7444"],["#f27291","#82241f","#b5decc"],["#d6b43e","#fcb315","#0093a5"],["#d6b43e","#f37420","#112f2c"],["#fdd4bd","#b2b73e","#b4cdc2"],["#f5ecc2","#f99d1b","#064f6e"],["#c55347","#793327","#a5c8d1"],["#f37f94","#fcb315","#b2b73e"],["#cc1236","#fff200","#006eb8"],["#eb5324","#00978d","#051230"],["#d6b43e","#96d1aa","#4f4086"],["#7d133a","#d6b43e","#5a82b3"],["#f8ed43","#c27544","#87c540"],["#bc892b","#78cdd0","#b5b1d8"],["#c19f2c","#71502f","#547076"],["#7c4226","#eeb480","#005b8d"],["#d46d7a","#8fa071","#b984af"],["#ffdd00","#b5decc","#007190"],["#dd4027","#fcb315","#4f4086"],["#e0b3b6","#f27291","#6d4145"],["#f48067","#fbe6a0","#112f2c"],["#c2ae93","#a7d4e4","#064f6e"],["#f8ed43","#064f6e","#8c4c62"],["#f8b6ba","#ffefae","#a1a39a"],["#b73f74","#fcb315","#59256a"],["#802626","#f99d1b","#b4cdc2"],["#c27544","#007190","#59256a"],["#f8ed43","#762c19","#b5decc"],["#f8b6ba","#c0a9b3","#7a4456"],["#eeb480","#c1c494","#6450a1"],["#f9c1ce","#fdd4bd","#78cdd0"],["#802626","#96874d","#b5b1d8"],["#ebd3a2","#a5c8d1","#099197"],["#dd4027","#f3a257","#1c4286"],["#fdc57e","#9a72aa","#b6bfc1"],["#a62c37","#4f4086","#501345"],["#bb7125","#4b3317","#051230"],["#70727c","#8c4c62","#59256a"],["#f27291","#ebd3a2","#848061"],["#b59392","#c55347","#ffefae"],["#793327","#d8a37b","#006eb8"],["#005b8d","#c0a9b3","#a36aa5"],["#8fa071","#97acc8","#96d1aa"],["#f8ed43","#253122","#62c6bf"],["#ebd3a2","#d96629","#111314"],["#b59392","#e2b540","#006eb8"],["#fdbf68","#4b3317","#70727c"],["#f48067","#fbe6a0","#00908a"],["#eb5324","#fdd4bd","#5a82b3"],["#f27291","#ffefae","#b6bfc1"],["#b2b73e","#a7d4e4","#6450a1"],["#f37f94","#66629c","#b6bfc1"],["#ae5224","#ffdd00","#489b6e"],["#ab544d","#806e4b","#1c4286"],["#a62c37","#c1c494","#719470"],["#f48067","#837e31","#96d1aa"],["#b5decc","#96d1aa","#34454c"],["#ffefae","#eea78c","#555832"],["#b73f74","#c27544","#a5c8d1"],["#802626","#eea78c","#4f4086"],["#f8b6ba","#f3a257","#c27544"],["#a36752","#b4cdc2","#111314"],["#f5ecc2","#099197","#007190"],["#ebd3a2","#f99d1b","#97acc8"],["#fdc57e","#f8ed43","#555832"],["#f68c50","#a6a159","#051230"],["#ab2439","#986f2d","#97acc8"],["#eea78c","#ffdd00","#a7d4e4"],["#ebd3a2","#a36752","#4f4086"],["#fdbf68","#006eb8","#bf5892"],["#eb5324","#489b6e","#111314"],["#802626","#d8a37b","#1a7444"],["#005b8d","#b5b1d8","#70727c"],["#eb5324","#719470","#004f46"],["#b71f57","#d8a37b","#a36aa5"],["#a62c37","#b6bfc1","#111314"],["#e2b540","#f99d1b","#c16b27"],["#b59392","#d8a37b","#b5decc"],["#f27291","#547076","#7a4456"],["#cc1236","#004f46","#704357"],["#6d4145","#fdbf68","#4f4086"],["#f9c1ce","#a5c8d1","#0093a5"],["#a62c37","#ffefae","#b6bfc1"],["#f3a257","#253122","#b6bfc1"],["#f48067","#b5decc","#96d1aa"],["#e0b3b6","#793327","#5a82b3"],["#cc1236","#eeb480","#051230"],["#a62c37","#96874d","#40456a"],["#fdc57e","#71502f","#a7d4e4"],["#ebd3a2","#f99d1b","#c0a9b3"],["#bc892b","#1c4286","#84565b"],["#a62c37","#762c19","#97acc8"],["#d8a37b","#501345","#a1a39a"],["#b59392","#cab356","#b4cdc2"],["#f6917e","#fff200","#0093a5"],["#dd4027","#ffefae","#c5a56e","#547076"],["#f37f94","#ae5224","#1a7444","#111314"],["#bb7125","#ebd3a2","#6b7140","#34454c"],["#b59392","#c56127","#6d7e77","#007190"],["#a62c37","#819238","#12354e","#34454c"],["#f8b6ba","#a84222","#f5ecc2","#fdc57e"],["#bb7125","#ffdd00","#00978d","#1c4286"],["#f37f94","#bc892b","#b5b1d8","#704357"],["#793327","#c2ae93","#d6b43e","#547076"],["#cab356","#f15a30","#00b49b","#bce4e5"],["#a72144","#fff200","#1a7444","#34454c"],["#da525d","#bb7125","#c19f2c","#099197"],["#f8ed43","#f68c50","#501345","#34454c"],["#f8b6ba","#f5ecc2","#837e31","#ca92a8"],["#bb7125","#cab356","#78cdd0","#111314"],["#eea78c","#f37420","#009465","#111314"],["#e31f26","#fcb315","#006eb8","#a36aa5"],["#802626","#eeb480","#837e31","#007190"],["#f8ed43","#099197","#005b8d","#a1a39a"],["#d46d7a","#eea78c","#b4cdc2","#00b49b"],["#a72144","#ffefae","#78cdd0","#a1a39a"],["#da525d","#ebd3a2","#b09f36","#437742"],["#ae5224","#eeb480","#b5decc","#34454c"],["#f8b6ba","#dd4027","#b7c2a9","#0093a5"],["#d46d7a","#ffdd00","#a6a159","#1e0e3f"],["#e31f26","#ebd3a2","#8fa071","#00978d"],["#fdbf68","#f99d1b","#00978d","#006eb8"],["#b59392","#bb7125","#253122","#bce4e5"],["#bb7125","#802626","#a36aa5","#111314"],["#da525d","#f5ecc2","#6b7140","#437742"],["#b71f57","#96d1aa","#099197","#112f2c"],["#ffefae","#f37420","#b5decc","#97acc8"],["#f9c1ce","#7d133a","#a36752","#b6bfc1"],["#f15a30","#8b835b","#5a82b3","#9a72aa"],["#c55347","#c2ae93","#762c19","#7a4456"],["#f37f94","#fdd4bd","#afd472","#111314"],["#f27291","#b73f74","#837e31","#1e0e3f"],["#fdbf68","#d6b43e","#437742","#004f46"],["#bb7125","#eea78c","#c2ae93","#12354e"],["#da525d","#555832","#ca92a8","#7a4456"],["#ffefae","#00978d","#96d1aa","#007190"],["#da525d","#c59f6b","#96d1aa","#b984af"],["#ab544d","#802626","#719470","#62c6bf"],["#e2625e","#ffdd00","#00b49b","#004f46"],["#b59392","#ae5224","#f15a30","#b5decc"],["#ae5224","#fcb315","#00939b","#40456a"],["#f37f94","#cab356","#a7d4e4","#78cdd0"],["#f99d1b","#644b1e","#7a4456","#111314"],["#f8ed43","#c7d14f","#40456a","#1e0e3f"],["#6d4145","#ffefae","#555832","#96d1aa"],["#c7d14f","#00b49b","#96d1aa","#78cdd0"],["#ffefae","#eeb480","#c5a56e","#c2ae93"],["#bb7125","#b5decc","#709390","#489b6e"],["#f5ecc2","#fdbf68","#437742","#97acc8"],["#fdbf68","#fff200","#006eb8","#1e0e3f"],["#f5ecc2","#d8a37b","#71502f","#34454c"],["#ae5224","#f99d1b","#6b7140","#40456a"],["#bb7125","#f8ed43","#f15a30","#111314"],["#c53c69","#eea78c","#819238","#007190"],["#f48067","#fdbf68","#b5decc","#78cdd0"],["#e31f26","#ebd3a2","#8fa071","#a36aa5"],["#fdbf68","#c2ae93","#bce4e5","#007190"],["#fbe6a0","#f15a30","#253122","#b6bfc1"],["#793327","#fdbf68","#8b835b","#00978d"],["#eeb480","#ffdd00","#b2b73e","#b5decc"],["#f8ed43","#00978d","#009465","#bce4e5"],["#cc1236","#b5b1d8","#a36aa5","#501345"],["#d1b0a7","#cb2f43","#d96629","#96d1aa"],["#f3a257","#f68c50","#40456a","#064f6e"],["#f5ecc2","#eeb480","#837e31","#253122"],["#ab2439","#fdbf68","#b7c2a9","#c7d14f"],["#ae5224","#fcb315","#709390","#005b8d"],["#cc1236","#fff200","#1a7444","#111314"],["#f37f94","#793327","#1c4286","#4e1d4c"],["#f48067","#f5ecc2","#f3a257","#bf5892"],["#82241f","#009465","#4f4086","#59256a"],["#fcc79b","#c2ae93","#f8ed43","#b5decc"],["#806e4b","#42533e","#004f46","#112f2c"],["#bb7125","#ffdd00","#f99d1b","#437742"],["#f58e84","#f5ecc2","#819238","#a5c8d1"],["#b59392","#f5ecc2","#253122","#97acc8"],["#e31f26","#a84222","#bf5892","#6450a1"],["#fdc57e","#b2b73e","#762c19","#111314"],["#ab2439","#5a82b3","#a36aa5","#b6bfc1"],["#da525d","#fbe6a0","#e2b540","#112f2c"],["#f5ecc2","#f15a30","#afd472","#87c540"],["#f37f94","#bb7125","#c2ae93","#c0a9b3"],["#a84222","#f68c50","#4b3317","#00908a"],["#fdbf68","#c0a9b3","#501345","#34454c"],["#c1c494","#bce4e5","#97acc8","#099197"],["#c53c69","#1e0e3f","#9a72aa","#4f4086"],["#f58e84","#cb2f43","#253122","#004f46"],["#ae5224","#f8ed43","#96d1aa","#006eb8"],["#fdd4bd","#837e31","#afd472","#007190"],["#82241f","#f99d1b","#4f4086","#34454c"],["#f37f94","#793327","#ffefae","#42533e"],["#6d4145","#ca92a8","#713b4c","#111314"],["#a62c37","#fcb315","#004f46","#c0a9b3"],["#d8a37b","#d96629","#a5c8d1","#40456a"],["#f15a30","#00b49b","#b6bfc1","#111314"],["#f48067","#437742","#253122","#a5c8d1"],["#f8b6ba","#fdbf68","#986f2d","#253122"],["#ae5224","#ebd3a2","#635a3a","#064f6e"],["#fdc57e","#1c4286","#a36aa5","#111314"],["#793327","#bce4e5","#62c6bf","#6450a1"],["#b73f74","#b5decc","#c7d14f","#6d7e77"],["#a6a159","#00b49b","#005b8d","#b984af"],["#c1c494","#437742","#253122","#501345"]];
+
+function findNearestWada(hex){let best=WADA_NAMES[0],bestD=Infinity;for(const e of WADA_NAMES){const d=hexDistSq(hex,e[1]);if(d<bestD){bestD=d;best=e;}}return best;}
+function getWadaPalettes(hex){const n=findNearestWada(hex);return{nearest:n,matches:WADA_PALETTES.filter(p=>p.includes(n[1]))};}
+
+/* ===== 12 SOUS-SAISONS ===== */
+const SEASONS={
+  "Hiver Vrai":{palette:["#FFFFFF","#000000","#E8E8F0","#1C1C3A","#C0C0D0","#8B0000"],skin:"#F5EEF0",hair:"#1A1A1A",eye:"#4A4A6A",desc:"Contrastes forts, couleurs pures et froides"},
+  "Hiver Sombre":{palette:["#1C1C3A","#2D2D5A","#8B0000","#000000","#4A004A","#1A1A1A"],skin:"#E8D5C8",hair:"#0D0D0D",eye:"#1A1A2E",desc:"Teintes profondes et intenses"},
+  "Hiver Brillant":{palette:["#FF0040","#0047AB","#FFFFFF","#000080","#CC0044","#001F5B"],skin:"#F0E8E8",hair:"#2A1A1A",eye:"#003366",desc:"Couleurs vives et éclatantes"},
+  "Printemps Vrai":{palette:["#FF7F50","#FFD700","#98FF98","#FF69B4","#FFA500","#87CEEB"],skin:"#FCDEC0",hair:"#E8A84A",eye:"#4A8C3F",desc:"Couleurs chaudes, claires et fraîches"},
+  "Printemps Clair":{palette:["#FFB6C1","#FFFACD","#90EE90","#87CEEB","#FFDAB9","#E6E6FA"],skin:"#FDE8D0",hair:"#D4A84A",eye:"#6B8E3F",desc:"Teintes légères et lumineuses"},
+  "Printemps Chaud":{palette:["#FF6B35","#FFB347","#9ACD32","#FF4500","#DAA520","#32CD32"],skin:"#EBBF8A",hair:"#B8732A",eye:"#5C7A2A",desc:"Couleurs chaudes et saturées"},
+  "Été Vrai":{palette:["#C8A2C8","#7B9EBA","#B0C4DE","#DDA0DD","#9BB7D4","#C9C0D3"],skin:"#EDD9D4",hair:"#C8B4C2",eye:"#7A94B0",desc:"Teintes douces et froides"},
+  "Été Clair":{palette:["#E6E6FA","#B0E0E6","#FFB6C1","#D8BFD8","#E0F0FF","#F0E6FF"],skin:"#F2E4E0",hair:"#D4C4CC",eye:"#8AAABB",desc:"Nuances pâles et délicates"},
+  "Été Doux":{palette:["#9E7BB5","#6E9BB5","#B589A3","#7A9CB0","#A3899E","#6B8FA8"],skin:"#E4D0CC",hair:"#B0A0A8",eye:"#6A8898",desc:"Tons muted et sophistiqués"},
+  "Automne Vrai":{palette:["#C46A2A","#8B6914","#556B2F","#8B4513","#A0522D","#6B4226"],skin:"#E8C9A0",hair:"#7A3010",eye:"#7A5230",desc:"Teintes terreuses et riches"},
+  "Automne Foncé":{palette:["#5C3317","#3B2314","#2F4F2F","#4A2810","#6B3A2A","#1C3A1C"],skin:"#C8A070",hair:"#3A1808",eye:"#4A3018",desc:"Couleurs profondes et intenses"},
+  "Automne Chaud":{palette:["#E8732A","#D4A020","#7A9830","#C85020","#E0982A","#5A8020"],skin:"#F0D0A0",hair:"#9A4A18",eye:"#8A6030",desc:"Tons chauds et lumineux"},
+};
+
+/* ===== QUIZ DATA ===== */
+const QUIZ_STEPS=[
+  {key:'skin',label:'Ton teint naturel',swatches:[
+    {hex:'#FDEEE8',name:'Très clair rosé'},{hex:'#F5E0D0',name:'Clair chaud'},{hex:'#F0D0B8',name:'Beige clair'},{hex:'#E8C09A',name:'Beige doré'},
+    {hex:'#D4A070',name:'Caramel'},{hex:'#C07848',name:'Miel'},{hex:'#A05828',name:'Brun clair'},{hex:'#784028',name:'Brun moyen'},
+    {hex:'#5C2A18',name:'Brun foncé'},{hex:'#3C1808',name:'Ébène'},{hex:'#F8E8E8',name:'Clair rosé'},{hex:'#EED8C8',name:'Pêche doux'},
+  ]},
+  {key:'hair',label:'Ta couleur de cheveux naturelle',swatches:[
+    {hex:'#F5E8C0',name:'Blond très clair'},{hex:'#E0C878',name:'Blond doré'},{hex:'#C8A040',name:'Blond foncé'},{hex:'#A07820',name:'Blond cendré'},
+    {hex:'#804020',name:'Châtain clair'},{hex:'#603018',name:'Châtain'},{hex:'#8B2010',name:'Roux vif'},{hex:'#6A1808',name:'Roux foncé'},
+    {hex:'#301808',name:'Brun foncé'},{hex:'#180808',name:'Noir'},{hex:'#C8C8C8',name:'Gris'},{hex:'#F0F0F0',name:'Blanc'},
+  ]},
+  {key:'eye',label:'Tes yeux',swatches:[
+    {hex:'#4A7AB5',name:'Bleu clair'},{hex:'#1E5FA0',name:'Bleu foncé'},{hex:'#4A8C6A',name:'Vert clair'},{hex:'#2A6A3A',name:'Vert foncé'},
+    {hex:'#8C9A4A',name:'Vert noisette'},{hex:'#A07030',name:'Noisette'},{hex:'#7A4A20',name:'Marron clair'},{hex:'#4A2810',name:'Marron foncé'},
+    {hex:'#180808',name:'Noir'},{hex:'#8A8A8A',name:'Gris'},{hex:'#6A94A8',name:'Bleu gris'},{hex:'#7A8A5A',name:'Vert gris'},
+  ]},
+];
+
+function deduceSeason(skin,hair,eye){
+  const[sr,sg,sb]=hexToRgb(skin);
+  const[hr,hg,hb]=hexToRgb(hair);
+  const[er,eg,eb]=hexToRgb(eye);
+  const skinWarm=(sr-sb)>30;
+  const hairLight=((hr+hg+hb)/3)>100;
+  const hairWarm=(hr-hb)>20;
+  const eyeWarm=(er-eb)>10;
+  const skinLight=((sr+sg+sb)/3)>180;
+  const score={warm:0,cool:0,light:0,deep:0};
+  if(skinWarm)score.warm+=2;else score.cool+=2;
+  if(hairWarm)score.warm+=1;else score.cool+=1;
+  if(eyeWarm)score.warm+=1;else score.cool+=1;
+  if(skinLight)score.light+=2;else score.deep+=2;
+  if(hairLight)score.light+=1;else score.deep+=1;
+  const isWarm=score.warm>score.cool;
+  const isLight=score.light>score.deep;
+  const contrast=Math.abs((sr+sg+sb)/3-(hr+hg+hb)/3);
+  const isHigh=contrast>80;
+  if(!isWarm&&isHigh)return skinLight?'Hiver Brillant':'Hiver Sombre';
+  if(!isWarm&&!isHigh)return isLight?'Été Clair':'Été Doux';
+  if(!isWarm&&skinLight&&isHigh)return'Hiver Vrai';
+  if(!isWarm)return isLight?'Été Vrai':'Hiver Vrai';
+  if(isWarm&&isLight)return'Printemps Clair';
+  if(isWarm&&isHigh)return'Printemps Vrai';
+  if(isWarm&&!isLight&&!isHigh)return'Automne Chaud';
+  if(isWarm&&!isLight)return skinLight?'Automne Vrai':'Automne Foncé';
+  return'Printemps Chaud';
+}
+
+/* ===== PROFIL ===== */
+let userProfile=JSON.parse(localStorage.getItem('sapeProfile')||'null');
+function saveProfile(p){localStorage.setItem('sapeProfile',JSON.stringify(p));userProfile=p;}
+
+function renderAvatar(skin,hair,eye,container){
+  const s=skin||'#E8C9A0',h=hair||'#7A3010',e=eye||'#7A5230';
+  container.innerHTML=`<svg width="44" height="44" viewBox="0 0 44 44">
+    <ellipse cx="22" cy="28" rx="12" ry="8" fill="${h}"/>
+    <ellipse cx="22" cy="20" rx="13" ry="15" fill="${s}"/>
+    <ellipse cx="22" cy="9" rx="13" ry="8" fill="${h}"/>
+    <ellipse cx="14" cy="22" rx="4" ry="10" fill="${h}"/>
+    <ellipse cx="30" cy="22" rx="4" ry="10" fill="${h}"/>
+    <ellipse cx="17" cy="20" rx="3" ry="2.5" fill="white"/>
+    <ellipse cx="27" cy="20" rx="3" ry="2.5" fill="white"/>
+    <circle cx="17" cy="20" r="1.8" fill="${e}"/>
+    <circle cx="27" cy="20" r="1.8" fill="${e}"/>
+    <circle cx="17.5" cy="19.5" r=".6" fill="white"/>
+    <circle cx="27.5" cy="19.5" r=".6" fill="white"/>
+    <path d="M18 27 Q22 30 26 27" fill="none" stroke="#C86060" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function updateProfileBar(){
+  const avatarWrap=document.querySelector('.profile-avatar');
+  if(!userProfile){
+    avatarWrap.innerHTML=`<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="22" fill="var(--bg)"/><text x="22" y="27" text-anchor="middle" font-size="20">👤</text></svg>`;
+    document.getElementById('profileSeasonLabel').textContent='Configure ton profil';
+    document.getElementById('profileSubLabel').textContent='Pour des suggestions adaptées à ta colorimétrie';
+    return;
+  }
+  const{skin,hair,eye,season}=userProfile;
+  renderAvatar(skin,hair,eye,avatarWrap);
+  document.getElementById('profileSeasonLabel').textContent=season;
+  const s=SEASONS[season];
+  document.getElementById('profileSubLabel').textContent=s?s.desc:'Profil colorimétrique configuré';
+}
+
+/* ===== QUIZ LOGIC ===== */
+let quizAnswers={};
+let quizStep=0;
+function openQuiz(){quizAnswers={};quizStep=0;renderQuizStep();document.getElementById('quizOverlay').style.display='flex';}
+function closeQuiz(){document.getElementById('quizOverlay').style.display='none';}
+function renderQuizStep(){
+  const step=QUIZ_STEPS[quizStep];
+  const prog=document.getElementById('quizProgress');
+  prog.innerHTML=QUIZ_STEPS.map((_,i)=>`<div class="quiz-dot${i<=quizStep?' done':''}"></div>`).join('');
+  document.getElementById('quizStepLabel').textContent=step.label;
+  const grid=document.getElementById('quizSwatches');
+  grid.innerHTML='';
+  const sel=quizAnswers[step.key];
+  step.swatches.forEach(sw=>{
+    const btn=document.createElement('button');
+    btn.className='quiz-swatch-btn'+(sel===sw.hex?' selected':'');
+    btn.innerHTML=`<div class="quiz-swatch-circle" style="background:${sw.hex};"></div><span class="quiz-swatch-label">${sw.name}</span>`;
+    btn.addEventListener('click',()=>{
+      quizAnswers[step.key]=sw.hex;
+      grid.querySelectorAll('.quiz-swatch-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+    grid.appendChild(btn);
+  });
+  document.getElementById('quizBack').style.display=quizStep===0?'none':'block';
+  document.getElementById('quizNext').textContent=quizStep===QUIZ_STEPS.length-1?'Terminer':'Suivant';
+}
+document.getElementById('profileBar').addEventListener('click',openQuiz);
+document.getElementById('profileEditBtn').addEventListener('click',e=>{e.stopPropagation();openQuiz();});
+document.getElementById('quizBack').addEventListener('click',()=>{if(quizStep>0){quizStep--;renderQuizStep();}});
+document.getElementById('quizNext').addEventListener('click',()=>{
+  const step=QUIZ_STEPS[quizStep];
+  if(!quizAnswers[step.key]){alert('Choisis une teinte pour continuer.');return;}
+  if(quizStep<QUIZ_STEPS.length-1){quizStep++;renderQuizStep();}
+  else{
+    const season=deduceSeason(quizAnswers.skin,quizAnswers.hair,quizAnswers.eye);
+    saveProfile({...quizAnswers,season});
+    updateProfileBar();
+    closeQuiz();
+    renderPalettes();
+  }
+});
+document.getElementById('quizOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('quizOverlay'))closeQuiz();});
+
+/* ===== WEATHER ===== */
+let weatherTemp=null;
+const WMO={0:'Ciel dégagé ☀️',1:'Peu nuageux 🌤',2:'Partiellement nuageux ⛅',3:'Couvert ☁️',45:'Brouillard 🌫',48:'Brouillard givrant 🌫',51:'Bruine légère 🌦',53:'Bruine modérée 🌦',55:'Bruine dense 🌧',61:'Pluie légère 🌧',63:'Pluie modérée 🌧',65:'Forte pluie 🌧',71:'Neige légère 🌨',73:'Neige modérée 🌨',75:'Forte neige 🌨',80:'Averses légères 🌦',81:'Averses modérées 🌧',82:'Averses fortes ⛈',95:'Orage ⛈',96:'Orage grêle ⛈'};
+async function fetchWeather(lat,lon,label){
+  document.getElementById('weatherStatus').textContent='Récupération de la météo...';
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`,{signal:controller.signal});
+    clearTimeout(timeout);
+    if(!r.ok){document.getElementById('weatherStatus').textContent=`Erreur serveur météo (${r.status}).`;return;}
+    const d=await r.json();
+    const t=Math.round(d.current.temperature_2m);
+    const code=d.current.weathercode;
+    weatherTemp=t;
+    document.getElementById('wTemp').textContent=`${t}°C`;
+    document.getElementById('wDesc').textContent=`${label} · ${WMO[code]||'—'}`;
+    let cls,badge;
+    if(t<5){cls='cold';badge='❄️ Froid';}
+    else if(t<12){cls='cool';badge='🧥 Frais';}
+    else if(t<20){cls='mild';badge='🌿 Doux';}
+    else if(t<28){cls='warm';badge='☀️ Chaud';}
+    else{cls='hot';badge='🔥 Très chaud';}
+    document.getElementById('wBadge').className=`weather-badge ${cls}`;
+    document.getElementById('wBadge').textContent=badge;
+    document.getElementById('weatherDisplay').style.display='block';
+    document.getElementById('weatherStatus').textContent='';
+    renderPalettes();
+  }catch(e){
+    if(e.name==='AbortError'){document.getElementById('weatherStatus').textContent='Délai dépassé. Vérifie ta connexion.';}
+    else{document.getElementById('weatherStatus').textContent=`Erreur météo : ${e.message}`;}
+  }
+}
+async function searchCity(city){
+  document.getElementById('weatherStatus').textContent='Recherche de la ville...';
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=fr`,{signal:controller.signal});
+    clearTimeout(timeout);
+    if(!r.ok){document.getElementById('weatherStatus').textContent=`Erreur serveur (${r.status}).`;return;}
+    const d=await r.json();
+    if(!d.results||!d.results[0]){document.getElementById('weatherStatus').textContent='Ville non trouvée. Essaie en anglais (ex: Liege).';return;}
+    const{latitude,longitude,name,country}=d.results[0];
+    fetchWeather(latitude,longitude,`${name}, ${country}`);
+  }catch(e){
+    if(e.name==='AbortError'){document.getElementById('weatherStatus').textContent='Délai dépassé. Vérifie ta connexion.';}
+    else{document.getElementById('weatherStatus').textContent=`Erreur : ${e.message}`;}
+  }
+}
+document.getElementById('btnCitySearch').addEventListener('click',()=>{const v=document.getElementById('cityInput').value.trim();if(v)searchCity(v);});
+document.getElementById('cityInput').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v)searchCity(v);}});
+document.getElementById('btnGeoLoc').addEventListener('click',()=>{
+  if(!navigator.geolocation){document.getElementById('weatherStatus').textContent='Géolocalisation non disponible.';return;}
+  document.getElementById('weatherStatus').textContent='Localisation en cours...';
+  navigator.geolocation.getCurrentPosition(p=>fetchWeather(p.coords.latitude,p.coords.longitude,'Ta position'),()=>{document.getElementById('weatherStatus').textContent='Permission de localisation refusée.';});
+});
+
+/* ===== PIECES ===== */
+const PIECES_COLD={top:['Manteau','Trench','Bomber','Doudoune','Hoodie','Pull épais','Col roulé','Veste en laine'],bottom:['Jean','Cargo','Pantalon chaud','Jogging épais'],shoes:['Boots','Bottines','Sneakers montantes'],accessory:['Écharpe','Bonnet','Gants','Ceinture']};
+const PIECES_COOL={top:['Veste','Blazer','Cardigan','Sweat','Pull','Chemise manches longues'],bottom:['Jean','Chino','Cargo','Pantalon'],shoes:['Sneakers','Derby','Loafers','Boots'],accessory:['Casquette','Écharpe légère','Ceinture','Sac']};
+const PIECES_MILD={top:['T-shirt','Chemise','Polo','Sweat léger','Veste légère'],bottom:['Jean','Chino','Short','Cargo'],shoes:['Sneakers','Loafers','Derby','Mocassins'],accessory:['Casquette','Ceinture','Sac','Montre']};
+const PIECES_WARM={top:['T-shirt','Polo','Chemise légère','Débardeur stylé'],bottom:['Short','Jean léger','Cargo léger','Chino'],shoes:['Sneakers','Mocassins','Sandales','Loafers'],accessory:['Casquette','Lunettes','Ceinture','Sac']};
+function getPiecesSet(){if(weatherTemp===null)return PIECES_MILD;if(weatherTemp<5)return PIECES_COLD;if(weatherTemp<15)return PIECES_COOL;if(weatherTemp<25)return PIECES_MILD;return PIECES_WARM;}
+function assignPiece(i,n){if(n===2)return i===0?'top+bottom':'shoes';if(n===3)return i===0?'top':i===1?'bottom':'shoes';if(i===0)return'top';if(i===1)return'bottom';if(i===2)return'shoes';return'accessory';}
+function getRandPiece(cat){const s=getPiecesSet();const arr=s[cat]||PIECES_MILD.top;return arr[Math.floor(Math.random()*arr.length)];}
+function getPieces(i,n){const cat=assignPiece(i,n);if(cat==='top+bottom')return[getRandPiece('top'),getRandPiece('bottom')];return[getRandPiece(cat)];}
+
+/* ===== THEORY MODES ===== */
+const THEORY={
+  analogous:{label:'Harmonie analogue',mood:'Fluidité naturelle',fn:(h,s,l,n)=>{const c=[hslToHex(h,s,l)];const st=n<=2?40:n===3?30:22;for(let i=1;i<n;i++){c.push(hslToHex((h+st*i)%360,Math.max(s-8*i,20),Math.min(l+6*i,82)));}return c;}},
+  complementary:{label:'Complémentaire',mood:'Tension élégante',fn:(h,s,l,n)=>{const c=[hslToHex(h,s,l)];if(n>=2)c.push(hslToHex((h+180)%360,Math.max(s-25,18),Math.min(l+18,84)));if(n>=3)c.push(hslToHex(h,Math.max(s-40,12),Math.min(l+30,92)));if(n>=4)c.push(hslToHex((h+180)%360,Math.max(s-10,22),Math.max(l-15,18)));return c;}},
+  split:{label:'Split-complémentaire',mood:'Vivacité maîtrisée',fn:(h,s,l,n)=>{const c=[hslToHex(h,s,l)];if(n>=2)c.push(hslToHex((h+150)%360,Math.max(s-14,22),Math.min(l+5,75)));if(n>=3)c.push(hslToHex((h+210)%360,Math.max(s-14,22),Math.min(l+5,75)));if(n>=4)c.push(hslToHex(h,Math.max(s-38,8),Math.min(l+36,94)));return c;}},
+  triadic:{label:'Triade',mood:'Équilibre tricolore',fn:(h,s,l,n)=>{const c=[hslToHex(h,s,l)];if(n>=2)c.push(hslToHex((h+120)%360,Math.max(s-18,18),Math.min(l+8,78)));if(n>=3)c.push(hslToHex((h+240)%360,Math.max(s-18,18),Math.min(l+8,78)));if(n>=4)c.push(hslToHex(h,Math.max(s-44,7),Math.min(l+38,94)));return c;}},
+  tetradic:{label:'Tétrade',mood:'Carré chromatique',fn:(h,s,l,n)=>{const c=[hslToHex(h,s,l)];if(n>=2)c.push(hslToHex((h+90)%360,Math.max(s-15,20),Math.min(l+10,80)));if(n>=3)c.push(hslToHex((h+180)%360,Math.max(s-20,18),Math.min(l+15,84)));if(n>=4)c.push(hslToHex((h+270)%360,Math.max(s-15,20),Math.min(l+10,80)));return c;}},
+};
+
+/* ===== STATE ===== */
+let currentH=28,currentS=52,currentL=58,currentHex='#c4956a',currentN=2,currentMode='wada';
+
+/* ===== RENDER ===== */
+function buildCard(title,mood,colors){
+  const card=document.createElement('div');
+  card.className='palette-card';
+  const sw=colors.map((c,i)=>`<div class="p-swatch" style="background:${c};" data-hex="${c}" title="Cliquer pour utiliser cette couleur"><span class="p-swatch-hex">${c}</span></div>`).join('');
+  const pieces=colors.map((c,i)=>{return getPieces(i,colors.length).map(p=>`<div class="piece-tag"><div class="piece-dot" style="background:${c};"></div><span>${p}</span></div>`).join('');}).join('');
+  card.innerHTML=`<div class="palette-header"><span class="palette-name">${title}</span><span class="palette-mood">${mood}</span></div><div class="palette-swatches">${sw}</div><div class="pieces-grid">${pieces}</div>`;
+  card.querySelectorAll('.p-swatch').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const h=el.dataset.hex;
+      const[r,g,b]=hexToRgb(h);
+      const[hh,ss,ll]=rgbToHsl(r,g,b);
+      setCurrentColor(hh,ss,ll);
+      updateWheelCursorToHsl(hh,ss,ll);
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      document.querySelector('[data-tab="wheel"]').classList.add('active');
+      document.getElementById('panel-wheel').classList.add('active');
+      document.getElementById('wheelSwatch').style.background=h;
+      document.getElementById('wheelHex').textContent=h;
+      document.getElementById('wheelName').textContent=getColorName(hh,ss,ll);
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+  return card;
+}
+
+function filterByColorimetry(palettes){
+  if(!userProfile||!userProfile.season)return palettes;
+  const s=SEASONS[userProfile.season];
+  if(!s||!s.palette)return palettes;
+  const good=s.palette.map(p=>p.toLowerCase());
+  const scored=palettes.map(p=>{
+    let score=0;
+    for(const c of p){
+      let minD=Infinity;
+      for(const g of good){minD=Math.min(minD,hexDistSq(c,g));}
+      if(minD<8000)score++;
+    }
+    return{p,score};
+  });
+  return scored.sort((a,b)=>b.score-a.score).map(x=>x.p);
+}
+
+function renderPalettes(){
+  const sec=document.getElementById('palettesSection');
+  sec.innerHTML='';
+  if(currentMode==='wada'){
+    const{nearest,matches}=getWadaPalettes(currentHex);
+    if(!matches.length){sec.innerHTML=`<div class="empty-state">Aucune combinaison Wada pour ${nearest[0]}.</div>`;return;}
+    let filtered=matches.filter(p=>p.length===currentN);
+    if(!filtered.length)filtered=matches;
+    const sorted=filterByColorimetry(filtered);
+    sorted.slice(0,8).forEach((pc,i)=>{
+      const mood=userProfile?`Combinaison #${i+1} · ${userProfile.season}`:`Combinaison #${i+1} (${pc.length} coul.)`;
+      sec.appendChild(buildCard(`Wada — ${nearest[0]}`,mood,pc));
+    });
+    return;
+  }
+  const t=THEORY[currentMode];
+  if(t){const c=t.fn(currentH,currentS,currentL,currentN);sec.appendChild(buildCard(t.label,t.mood,c));}
+}
+
+function setCurrentColor(h,s,l){currentH=h;currentS=s;currentL=l;currentHex=hslToHex(h,s,l);renderPalettes();}
+
+/* ===== WHEEL ===== */
+const wc=document.getElementById('colorWheel'),wctx=wc.getContext('2d');
+const WCX=120,WCY=120,WR=116;
+function drawWheel(){const id=wctx.createImageData(240,240);const d=id.data;for(let y=0;y<240;y++){for(let x=0;x<240;x++){const dx=x-WCX,dy=y-WCY,dist=Math.sqrt(dx*dx+dy*dy);if(dist>WR)continue;const angle=(Math.atan2(dy,dx)*180/Math.PI+360)%360,sat=dist/WR;const[r,g,b]=hslToRgb(angle/360,sat,0.55-sat*.12);const i=(y*240+x)*4;d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255;}}wctx.putImageData(id,0,0);}
+drawWheel();
+function updateWheelCursorToHsl(h,s,l){const angle=h*Math.PI/180,sat=s/100,r2=sat*WR;const x=WCX+r2*Math.cos(angle),y=WCY+r2*Math.sin(angle);const pct=x/wc.width*100,pct2=y/wc.height*100;document.getElementById('wheelCursor').style.left=pct+'%';document.getElementById('wheelCursor').style.top=pct2+'%';}
+function pickFromWheel(ex,ey){const rect=wc.getBoundingClientRect(),sx=wc.width/rect.width,sy=wc.height/rect.height;const x=Math.round((ex-rect.left)*sx),y=Math.round((ey-rect.top)*sy);if((x-WCX)**2+(y-WCY)**2>WR*WR)return;const dd=wctx.getImageData(x,y,1,1).data;const[h,s,l]=rgbToHsl(dd[0],dd[1],dd[2]);document.getElementById('wheelCursor').style.left=(x/wc.width*100)+'%';document.getElementById('wheelCursor').style.top=(y/wc.height*100)+'%';const hex=hslToHex(h,s,l);document.getElementById('wheelSwatch').style.background=hex;document.getElementById('wheelHex').textContent=hex;document.getElementById('wheelName').textContent=getColorName(h,s,l);setCurrentColor(h,s,l);}
+let wd=false;
+wc.addEventListener('mousedown',e=>{wd=true;pickFromWheel(e.clientX,e.clientY);});
+window.addEventListener('mousemove',e=>{if(wd)pickFromWheel(e.clientX,e.clientY);});
+window.addEventListener('mouseup',()=>wd=false);
+wc.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];pickFromWheel(t.clientX,t.clientY);},{passive:false});
+wc.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];pickFromWheel(t.clientX,t.clientY);},{passive:false});
+
+/* ===== HEX INPUT ===== */
+const hexInp=document.getElementById('hexInput');
+['#C4956A','#2C3E50','#7F8C8D','#1B4332','#8B0000','#D4A574','#3A506B','#B5651D','#4A4A48','#E8DFD0'].forEach(hex=>{
+  const sw=document.createElement('div');sw.className='hex-swatch-preset';sw.style.background=hex;
+  sw.addEventListener('click',()=>{hexInp.value=hex.replace('#','');applyHex(hex);});
+  document.getElementById('hexPresets').appendChild(sw);
+});
+function applyHex(hex){
+  if(!isValidHex(hex)){document.getElementById('hexError').textContent='Code invalide — 6 caractères (ex: C4956A)';document.getElementById('hexSummary').style.display='none';return;}
+  document.getElementById('hexError').textContent='';
+  if(!hex.startsWith('#'))hex='#'+hex;
+  const[r,g,b]=hexToRgb(hex);const[h,s,l]=rgbToHsl(r,g,b);
+  document.getElementById('hexSwatch').style.background=hex;
+  document.getElementById('hexName').textContent=getColorName(h,s,l);
+  document.getElementById('hexHexDisplay').textContent=hex.toUpperCase();
+  document.getElementById('hexSummary').style.display='flex';
+  setCurrentColor(h,s,l);
+}
+hexInp.addEventListener('input',()=>{let v=hexInp.value.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();hexInp.value=v;if(v.length===6||v.length===3)applyHex(v);else if(v.length>0){document.getElementById('hexError').textContent='';document.getElementById('hexSummary').style.display='none';}});
+
+/* ===== PHOTO ===== */
+const fc=document.getElementById('photoCanvas'),pctx2=fc.getContext('2d');
+let mediaStream=null;
+document.getElementById('btnUpload').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])loadImg(e.target.files[0]);});
+document.getElementById('btnCamera').addEventListener('click',async()=>{
+  try{mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    document.getElementById('cameraStream').srcObject=mediaStream;
+    document.getElementById('cameraStream').style.display='block';
+    document.getElementById('cameraControls').style.display='flex';
+    document.getElementById('photoActions').style.display='none';
+  }catch(e){alert("Impossible d'accéder à la caméra.");}
+});
+function stopCam(){if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null;}document.getElementById('cameraStream').style.display='none';document.getElementById('cameraControls').style.display='none';document.getElementById('photoActions').style.display='flex';}
+document.getElementById('btnCancelCamera').addEventListener('click',stopCam);
+document.getElementById('btnCapture').addEventListener('click',()=>{const v=document.getElementById('cameraStream');const t=document.createElement('canvas');t.width=v.videoWidth;t.height=v.videoHeight;t.getContext('2d').drawImage(v,0,0);t.toBlob(b=>loadImg(b));stopCam();});
+function loadImg(f){const img=new Image(),url=URL.createObjectURL(f);img.onload=()=>{const s=Math.min(1,480/img.width);fc.width=Math.round(img.width*s);fc.height=Math.round(img.height*s);pctx2.drawImage(img,0,0,fc.width,fc.height);document.getElementById('photoPreviewWrap').style.display='block';document.getElementById('detectedHint').style.display='block';URL.revokeObjectURL(url);extractColors();};img.src=url;}
+function extractColors(){const w=fc.width,h=fc.height,data=pctx2.getImageData(0,0,w,h).data,bk={};for(let i=0;i<data.length;i+=16){const r=data[i],g=data[i+1],b=data[i+2];if(data[i+3]<200)continue;const k=[Math.round(r/24)*24,Math.round(g/24)*24,Math.round(b/24)*24].join(',');bk[k]=(bk[k]||0)+1;}const sorted=Object.entries(bk).sort((a,b)=>b[1]-a[1]);const top=[];for(const[k]of sorted){const[r,g,b]=k.split(',').map(Number);if(top.some(c=>Math.abs(c[0]-r)<20&&Math.abs(c[1]-g)<20&&Math.abs(c[2]-b)<20))continue;top.push([r,g,b]);if(top.length>=3)break;}showDetected(top);}
+function showDetected(list){const row=document.getElementById('detectedRow');row.innerHTML='';row.style.display='flex';list.forEach(([r,g,b],i)=>{const hex=rgbToHex(r,g,b),sw=document.createElement('div');sw.className='detected-swatch'+(i===0?' selected':'');sw.style.background=hex;sw.addEventListener('click',()=>{document.querySelectorAll('.detected-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');selectPhotoColor(hex);});row.appendChild(sw);if(i===0)selectPhotoColor(hex);});}
+function selectPhotoColor(hex){const[r,g,b]=hexToRgb(hex),[h,s,l]=rgbToHsl(r,g,b);document.getElementById('photoSwatch').style.background=hex;document.getElementById('photoName').textContent=getColorName(h,s,l);document.getElementById('photoHexDisplay').textContent=hex.toUpperCase();document.getElementById('photoSummary').style.display='flex';setCurrentColor(h,s,l);}
+fc.addEventListener('click',e=>{const rect=fc.getBoundingClientRect(),sx=fc.width/rect.width,sy=fc.height/rect.height;const x=Math.round((e.clientX-rect.left)*sx),y=Math.round((e.clientY-rect.top)*sy);if(x<0||y<0||x>=fc.width||y>=fc.height)return;const d=pctx2.getImageData(x,y,1,1).data;const hex=rgbToHex(d[0],d[1],d[2]);const m=document.getElementById('photoTapMarker');m.style.display='block';m.style.left=((e.clientX-rect.left)/rect.width*100)+'%';m.style.top=((e.clientY-rect.top)/rect.height*100)+'%';document.querySelectorAll('.detected-swatch').forEach(s=>s.classList.remove('selected'));selectPhotoColor(hex);});
+fc.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0],rect=fc.getBoundingClientRect(),sx=fc.width/rect.width,sy=fc.height/rect.height;const x=Math.round((t.clientX-rect.left)*sx),y=Math.round((t.clientY-rect.top)*sy);if(x<0||y<0||x>=fc.width||y>=fc.height)return;const d=pctx2.getImageData(x,y,1,1).data;selectPhotoColor(rgbToHex(d[0],d[1],d[2]));},{passive:false});
+
+/* ===== TABS ===== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('panel-'+btn.dataset.tab).classList.add('active');stopCam();});});
+
+/* ===== COUNT ===== */
+document.getElementById('countBtns').addEventListener('click',e=>{const b=e.target.closest('.count-btn');if(!b)return;document.querySelectorAll('.count-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentN=parseInt(b.dataset.n);renderPalettes();});
+
+/* ===== MODE ===== */
+const MODE_HINTS={wada:'Vraies combinaisons du dictionnaire de Sanzo Wada (348 palettes, 159 couleurs).',analogous:'Couleurs voisines sur le cercle chromatique — effet fluide et naturel.',complementary:'Couleur opposée sur le cercle — fort contraste.',split:'Deux voisines de l\'opposée — contraste plus doux.',triadic:'Trois couleurs équidistantes sur le cercle.',tetradic:'Quatre couleurs en carré — riche et équilibré.'};
+document.getElementById('modeGrid').addEventListener('click',e=>{const b=e.target.closest('.mode-btn');if(!b)return;document.querySelectorAll('.mode-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentMode=b.dataset.mode;document.getElementById('modeHint').textContent=MODE_HINTS[currentMode]||'';renderPalettes();});
+
+/* ===== INIT ===== */
+updateProfileBar();
+function initWheel(){const rect=wc.getBoundingClientRect();if(rect.width===0){requestAnimationFrame(initWheel);return;}pickFromWheel(rect.left+rect.width*.62,rect.top+rect.height*.62);}
+requestAnimationFrame(initWheel);
+</script>
+</body>
+</html>
